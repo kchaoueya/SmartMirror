@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "garments": [
+    {
+      "id": "tshirt",
+      "name": "T-shirt",
+      "texture": "/assets/garments/tshirt.png",
+      "size": [1024, 1024],
+      "fit": { "ks": 1.35, "kh": 1.25, "dc": 0.12, "db": 0.10 },
+      "colors": [
+        { "id": "blanc", "label": "Blanc", "hue": 0, "saturation": 0 },
+        { "id": "bleu", "label": "Bleu", "hue": 215, "saturation": 0.6 },
+        { "id": "rouge", "label": "Rouge", "hue": 355, "saturation": 0.7 }
+      ]
+    },
+    {
+      "id": "chemise",
+      "name": "Chemise",
+      "texture": "/assets/garments/chemise.png",
+      "size": [1024, 1024],
+      "fit": { "ks": 1.30, "kh": 1.20, "dc": 0.10, "db": 0.15 },
+      "colors": []
+    },
+    {
+      "id": "sweat",
+      "name": "Sweat",
+      "texture": "/assets/garments/sweat.png",
+      "size": [1024, 1024],
+      "fit": { "ks": 1.45, "kh": 1.30, "dc": 0.14, "db": 0.12 },
+      "colors": []
+    }
+  ]
+}
