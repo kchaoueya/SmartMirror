@@ -33,7 +33,7 @@ MediaPipe **détecte** les repères, OpenCV.js **calcule et suit**, Three.js/Web
 | `public/assets/garments/` | PNG des hauts et `catalog.json` | Tasnim (images), Eya (catalogue) |
 | `docs/` | planning, configuration de référence, recette | les trois |
 
-Planning détaillé et règles Git : [`docs/PLANNING.md`](docs/PLANNING.md).
+Planning détaillé : [`docs/PLANNING.md`](docs/PLANNING.md). Règles de contribution : [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Versions fixées
 
