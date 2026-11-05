@@ -15,15 +15,21 @@ const MESSAGES = {
   [AppState.STOPPED]: 'Session arrêtée.',
 };
 
-/** Met à jour l'interface selon l'état. TODO (Eya, S1) : activer/désactiver les commandes selon l'état. */
+/** Met à jour l'interface selon l'état : message, écran affiché (accueil ou essayage), boutons actifs. */
 export function renderState(state, detail = {}) {
   $('status').textContent = detail.message ?? MESSAGES[state] ?? state;
   $('hint').textContent = [AppState.SEARCHING, AppState.LOST].includes(state) ? MESSAGES[state] : '';
-  const running = ![AppState.LOADING, AppState.READY, AppState.STOPPED, AppState.PERMISSION_DENIED, AppState.WEBGPU_UNAVAILABLE].includes(state);
+
+  // Caméra introuvable ou occupée au démarrage : on reste sur l'accueil pour pouvoir réessayer.
+  const cameraFailed = state === AppState.RESOURCE_ERROR && detail.source === 'camera';
+  const running = !cameraFailed &&
+    ![AppState.LOADING, AppState.READY, AppState.STOPPED, AppState.PERMISSION_DENIED, AppState.WEBGPU_UNAVAILABLE].includes(state);
   $('intro').hidden = running;
   $('stage').hidden = !running;
   $('controls').hidden = !running;
-  $('btn-start').disabled = state !== AppState.READY && state !== AppState.STOPPED && state !== AppState.PERMISSION_DENIED;
+
+  const canStart = [AppState.READY, AppState.STOPPED, AppState.PERMISSION_DENIED].includes(state) || cameraFailed;
+  $('btn-start').disabled = !canStart;
 }
 
 /**

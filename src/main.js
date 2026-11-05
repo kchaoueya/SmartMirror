@@ -61,7 +61,7 @@ async function start() {
     await startCamera(video);
   } catch (e) {
     console.error(e);
-    return setState(e.code === 'denied' ? AppState.PERMISSION_DENIED : AppState.RESOURCE_ERROR, { message: e.message });
+    return setState(e.code === 'denied' ? AppState.PERMISSION_DENIED : AppState.RESOURCE_ERROR, { message: e.message, source: 'camera' });
   }
   setState(AppState.SEARCHING);
   loopId = requestAnimationFrame(loop);
