@@ -1,29 +1,48 @@
 // Propriétaire : Tasnim — S2 (maillage), S3 (application de l'homographie), S4 (offsets, masquage)
 import { GRID } from '../contracts.js';
 
-/**
- * Maillage du vêtement : plan subdivisé (GRID.cols x GRID.rows) dont les sommets sont
- * placés à chaque image à partir de GarmentTransform.vertices (calculé par Salma avec OpenCV.js).
- * La subdivision assure une interpolation correcte de la texture sous perspective.
- *
- * TODO (Tasnim) :
- *  S2 : new THREE.PlaneGeometry(1, 1, GRID.cols, GRID.rows) ; MeshBasicNodeMaterial({ transparent: true })
- *       vérifier que l'ordre des sommets de PlaneGeometry = ordre de la grille de geometry.js (ligne par ligne, haut→bas)
- *  S3 : setVertices(Float32Array) → position.setXY(i, x, -y) ; position.needsUpdate = true ; computeBoundingSphere()
- *  S4 : setVisible(bool) avec fondu court (F08)
- *  S5 : setTexture(texture) en libérant l'ancienne (texture.dispose()) si elle n'est plus dans le cache
- */
+// Nombre total de sommets : (cols+1) * (rows+1)
+// PlaneGeometry ordonne ses sommets ligne par ligne, gauche→droite, haut→bas — même convention que geometry.js.
+const VERTEX_COUNT = (GRID.cols + 1) * (GRID.rows + 1);
+
 export class GarmentMesh {
   constructor(THREE, scene) {
     this.THREE = THREE;
     this.scene = scene;
+
+    // Géométrie subdivisée : chaque quad est découpé en 2 triangles → la texture se déforme correctement sous perspective.
+    const geo = new THREE.PlaneGeometry(1, 1, GRID.cols, GRID.rows);
+    const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide });
+
+    this.mesh = new THREE.Mesh(geo, mat);
+    this.mesh.visible = false;
+    scene.add(this.mesh);
+  }
+
+  /** @param {Float32Array} vertices  [x0,y0, x1,y1, ...] pixels écran, ordre identique à GRID */
+  setVertices(vertices) {
+    const pos = this.mesh.geometry.attributes.position;
+    for (let i = 0; i < VERTEX_COUNT; i++) {
+      // y_scène = -y_écran (caméra orthographique : 0 en haut, -h en bas)
+      pos.setXY(i, vertices[i * 2], -vertices[i * 2 + 1]);
+    }
+    pos.needsUpdate = true;
+    this.mesh.geometry.computeBoundingSphere();
+  }
+
+  setVisible(visible) {
+    this.mesh.visible = visible;
+  }
+
+  // S3 : setTexture(texture) — libérer l'ancienne avant d'appliquer la nouvelle (F06)
+  setTexture(texture) {}
+
+  dispose() {
+    this.mesh.geometry.dispose();
+    this.mesh.material.dispose();
+    this.scene.remove(this.mesh);
     this.mesh = null;
   }
-  setTexture(texture) {}
-  /** @param {Float32Array} vertices  [x0,y0,...] pixels écran */
-  setVertices(vertices) {}
-  setVisible(visible) {}
-  dispose() {}
 }
 
 export { GRID };
