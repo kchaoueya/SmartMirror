@@ -2,22 +2,61 @@
 import * as THREE from 'three/webgpu';
 
 /**
- * Initialise le rendu WebGPU sur le canvas transparent superposé à la vidéo.
- * TODO (Tasnim, S1) :
- *  - if (!navigator.gpu) → throw Error code 'webgpu-unavailable'
- *  - renderer = new THREE.WebGPURenderer({ canvas, alpha: true, antialias: true, forceWebGL: false });
- *  - await renderer.init();
- *  - VÉRIFIER renderer.backend.isWebGPUBackend === true, sinon refuser (un repli WebGL ne valide pas F09)
- *  - renderer.setClearColor(0x000000, 0) ; caméra orthographique en PIXELS :
- *      new THREE.OrthographicCamera(0, w, 0, -h, -10, 10)  (axe y inversé : y_scène = -y_écran)
- *  - S1 : afficher un plan coloré de test pour prouver le rendu
  * @param {HTMLCanvasElement} canvas
  * @returns {Promise<{renderer, scene, camera, backend: string, resize(w:number,h:number):void, render():void}>}
  */
 export async function createRenderer(canvas) {
-  const err = new Error('createRenderer() pas encore implémenté (Tasnim, S1)');
-  err.code = 'not-implemented';
-  throw err;
+  if (!navigator.gpu) {
+    const err = new Error("WebGPU n'est pas disponible sur ce navigateur.");
+    err.code = 'webgpu-unavailable';
+    throw err;
+  }
+
+  const renderer = new THREE.WebGPURenderer({ canvas, alpha: true, antialias: true, forceWebGL: false });
+  await renderer.init();
+
+  if (!renderer.backend?.isWebGPUBackend) {
+    const err = new Error("Le backend WebGPU n'a pas pu être activé (repli WebGL détecté).");
+    err.code = 'webgpu-unavailable';
+    throw err;
+  }
+
+  const backend = renderer.backend.constructor.name;
+  renderer.setClearColor(0x000000, 0);
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  const scene = new THREE.Scene();
+
+  // Caméra orthographique en pixels : y_scène = -y_écran (0 en haut, -h en bas)
+  const camera = new THREE.OrthographicCamera(0, 640, 0, -480, -10, 10);
+  camera.position.z = 1;
+  renderer.setSize(640, 480);
+
+  // Plan coloré de test — preuve F09, à retirer en S3 quand le vrai maillage sera prêt
+  const testMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(160, 160),
+    new THREE.MeshBasicNodeMaterial({ color: 0x00ccff }),
+  );
+  testMesh.position.set(320, -240, 0);
+  scene.add(testMesh);
+
+  function resize(w, h) {
+    renderer.setSize(w, h);
+    camera.right = w;
+    camera.bottom = -h;
+    camera.updateProjectionMatrix();
+    testMesh.position.set(w / 2, -h / 2, 0);
+  }
+
+  function render() {
+    // Auto-resize quand le canvas change de taille (stage devient visible)
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w > 0 && h > 0 && (w !== canvas.width || h !== canvas.height)) resize(w, h);
+    renderer.render(scene, camera);
+  }
+
+  return { renderer, scene, camera, backend, resize, render };
 }
 
 export { THREE };
