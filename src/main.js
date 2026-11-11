@@ -9,8 +9,8 @@ import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
 
 import { startCamera, stopCamera } from './vision/camera.js';
 import { loadOpenCV, checkFunctions } from './vision/cv-loader.js';
-import { createPoseDetector, detectTorso } from './vision/pose.js';
-import { toDisplay } from './vision/coords.js';
+import { createPoseDetector, detectTorso, isTorsoReliable } from './vision/pose.js';
+import { computeFrame, torsoToDisplay } from './vision/coords.js';
 import { destinationCorners, computeTransform } from './vision/geometry.js';
 
 import { createRenderer, THREE } from './render/renderer.js';
@@ -89,15 +89,12 @@ function loop(now) {
     lastInference = now;
     const raw = detectTorso(ctx.detector, video, now);
     inferRate.tick(now);
-    if (raw) {
-      const frame = { videoW: video.videoWidth, videoH: video.videoHeight,
-        displayW: video.clientWidth, displayH: video.clientHeight, mirror: true };
-      store.landmarks = {
-        sl: toDisplay(raw.sl, frame), sr: toDisplay(raw.sr, frame),
-        hl: toDisplay(raw.hl, frame), hr: toDisplay(raw.hr, frame),
-        confidence: raw.confidence, source: 'detection', timestamp: now,
-      };
-      lastValid = now;
+    const frame = computeFrame(video, true); // true = miroir, comme le CSS de la vidéo
+    if (raw && frame) {
+      const torso = torsoToDisplay(raw, frame);
+      store.landmarks = torso;
+      // Le vêtement n'est placé que si les 4 repères sont fiables ET visibles à l'écran (F02, F08).
+      if (isTorsoReliable(raw) && torso.visible) lastValid = now;
     }
   }
 
