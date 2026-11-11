@@ -9,8 +9,6 @@ export class GarmentMesh {
   constructor(THREE, scene) {
     this.THREE = THREE;
     this.scene = scene;
-<<<<<<< Updated upstream
-=======
     this._texture = null; // référence gardée pour libérer la mémoire GPU au changement de haut
 
     // Géométrie subdivisée : chaque quad est découpé en 2 triangles → la texture se déforme correctement sous perspective.
@@ -51,7 +49,6 @@ export class GarmentMesh {
     this.mesh.geometry.dispose();
     this.mesh.material.dispose();
     this.scene.remove(this.mesh);
->>>>>>> Stashed changes
     this.mesh = null;
   }
 }
