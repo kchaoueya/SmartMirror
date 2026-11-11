@@ -32,20 +32,11 @@ export async function createRenderer(canvas) {
   camera.position.z = 1;
   renderer.setSize(640, 480);
 
-  // Plan coloré de test — preuve F09, à retirer en S3 quand le vrai maillage sera prêt
-  const testMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(160, 160),
-    new THREE.MeshBasicNodeMaterial({ color: 0x00ccff }),
-  );
-  testMesh.position.set(320, -240, 0);
-  scene.add(testMesh);
-
   function resize(w, h) {
     renderer.setSize(w, h);
     camera.right = w;
     camera.bottom = -h;
     camera.updateProjectionMatrix();
-    testMesh.position.set(w / 2, -h / 2, 0);
   }
 
   function render() {
