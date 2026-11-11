@@ -4,7 +4,7 @@
 // Version FIXÉE par numéro (« 4.x » ne pointe pas forcément vers la dernière version).
 // Pour la démonstration, on peut copier le fichier dans public/lib/opencv.js et utiliser '/lib/opencv.js'
 // afin de ne plus dépendre du réseau (le fichier fait ~10 Mo).
-export const OPENCV_URL = '/lib/opencv.js'; // copie locale d'OpenCV.js 4.13.0 (https://docs.opencv.org/4.13.0/opencv.js)// copie locale d'OpenCV.js 4.13.0 (docs.opencv.org/4.13.0/opencv.js)
+export const OPENCV_URL = '/lib/opencv.js'; // copie locale d'OpenCV.js 4.13.0 (https://docs.opencv.org/4.13.0/opencv.js)
 const TIMEOUT_MS = 60_000;
 /** Fonctions OpenCV.js dont le projet a besoin. Vérifiées au chargement (S1). */
 export const REQUIRED = [
