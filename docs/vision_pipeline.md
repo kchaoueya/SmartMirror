@@ -56,18 +56,26 @@ y  = oy + ny · videoH · s
 x  = displayW − x                                  // miroir
 ```
 
-Après conversion, les coordonnées sont en pixels d'affichage, origine en haut à gauche.
-Les repères sont alors nommés **selon leur côté à l'écran** (`sl`, `sr`, `hl`, `hr`) : en miroir,
-l'épaule gauche de la personne apparaît à gauche de l'écran, comme dans un vrai miroir.
-Dans la suite, `Sg, Sd, Hg, Hd` désignent ces points d'écran.
+Après conversion, les coordonnées sont exprimées en pixels dans le repère
+d'affichage, avec l'origine en haut à gauche.
 
-La conversion inverse (`toNormalized`) est testée : `toNormalized(toDisplay(p)) = p`.
+**Attention à l'inversion anatomique (implémentée dans `torsoToDisplay()`) :**
+La personne est face à la caméra. Dans l'image brute, son épaule gauche
+anatomique apparaît à droite (x élevé). Après l'effet miroir, elle se retrouve
+à gauche de l'écran — ce qui est naturel (comme dans un vrai miroir).
+
+La fonction `torsoToDisplay()` gère ce cas : en mode miroir, elle assigne
+`sl ← leftShoulder` (anatomique) et `sr ← rightShoulder`, de sorte que `sl.x < sr.x`
+à l'écran. Sans miroir, l'assignation est croisée (`sl ← rightShoulder`).
+C'est ce comportement qui est vérifié par les tests unitaires de `coords.test.mjs`.
 
 ### 1.2 Seuil de confiance
 
-Un repère est valide si `v ≥ θ`, avec `θ = 0,5` (`MIN_VISIBILITY`, `pose.js`).
-Si au moins un des quatre repères est invalide, ou hors de la zone visible,
-la détection est rejetée pour cette image (F02, F08).
+MediaPipe fournit une valeur de visibilité `v ∈ [0, 1]` pour chaque repère.
+Un repère est considéré valide si `v ≥ θ`.
+Le seuil est fixé à `θ = 0.5` (`MIN_VISIBILITY` dans `src/vision/pose.js`).
+Si au moins un des quatre repères est invalide, la détection est rejetée pour
+cette image (`isTorsoReliable()` dans `pose.js`).
 
 ---
 
@@ -88,25 +96,28 @@ a = (H − S) / h          // axe du buste (vecteur unitaire, vers le bas)
 Les quatre coins de destination, dans l'ordre haut-gauche, haut-droit, bas-droit, bas-gauche :
 
 ```
-C₁ = S + ks · (Sg − S) − dc · h · a
-C₂ = S + ks · (Sd − S) − dc · h · a
-C₃ = H + kh · (Hd − H) + db · h · a
-C₄ = H + kh · (Hg − H) + db · h · a
+demi-largeur épaules  = ks · w / 2    // coins haut : S.x ± ks·w/2
+demi-largeur hanches  = kh · w / 2    // coins bas  : H.x ± kh·w/2
+centre haut           = S − dc · h · ĵ    (ĵ = vecteur vers le haut)
+centre bas            = H + db · h · ĵ
 ```
 
-| Coefficient | Rôle (lu dans `catalog.json`) | Exemple |
-|-------------|------|------|
-| `ks` | élargissement de la ligne des épaules (manches) | 1,35 |
-| `kh` | élargissement de la ligne des hanches | 1,25 |
-| `dc` | remontée de l'encolure, en fraction de `h` | 0,12 |
-| `db` | descente du bas du vêtement, en fraction de `h` | 0,10 |
+| Coefficient | Rôle | Exemple |
+|-------------|------|---------|
+| `ks` | Élargissement latéral des épaules (manches) | 1.35 |
+| `kh` | Élargissement latéral des hanches | 1.25 |
+| `dc` | Remontée de l'encolure, en fraction de `h` | 0.12 |
+| `db` | Descente du bas du vêtement, en fraction de `h` | 0.10 |
 
-Les coins suivent les segments réels des épaules et des hanches et l'axe `a` du buste :
-**l'inclinaison du corps est donc prise en compte sans calcul d'angle séparé**.
-Si la personne penche les épaules, `Sd − Sg` tourne et `C₁C₂` tourne avec.
+Note : `ks` et `kh` sont tous les deux des facteurs **latéraux** (ils élargissent
+le vêtement sur les côtés). Ils s'appliquent à `w` (largeur inter-épaules),
+pas à `h`. C'est ce que confirme `src/contracts.js` : `kh` = "élargissement
+des hanches" (et non de la hauteur totale).
 
-**Réglages manuels** (`ManualAdjust`, F07) appliqués ensuite, autour du centre
-`Ĉ = (C₁ + C₂ + C₃ + C₄) / 4` :
+Les réglages manuels de l'utilisateur (`adjust.scale`, `adjust.dx`, `adjust.dy`)
+sont appliqués comme offsets additifs sur ces coins, sans remplacer le suivi.
+
+L'inclinaison du buste est déduite de la ligne des épaules :
 
 ```
 Cᵢ ← Ĉ + scale · (Cᵢ − Ĉ) + (dx · w,  dy · h)
