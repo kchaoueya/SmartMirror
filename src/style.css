@@ -4,6 +4,10 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #111; color: #
 header { display: flex; justify-content: space-between; align-items: center; padding: .5rem 1rem; }
 h1 { font-size: 1.2rem; margin: 0; }
 .status { font-size: .9rem; opacity: .8; }
+/* Badge PWA : visible seulement sans connexion (géré par src/ui/pwa.js) */
+.badge-offline { margin-left: auto; margin-right: 1rem; padding: .15rem .6rem; border-radius: 999px;
+  background: #b45309; color: #fff; font-size: .8rem; font-weight: 600; }
+.badge-offline[hidden] { display: none; }
 main { display: flex; gap: 1rem; padding: 0 1rem 1rem; }
 .panel { max-width: 40rem; }
 

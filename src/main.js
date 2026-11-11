@@ -5,6 +5,7 @@ import { store, setState, onStateChange } from './state.js';
 import { renderState, bindControls, resetControls, loadCatalog } from './ui/ui.js';
 import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.js';
 import { RateCounter } from './metrics/metrics.js';
+import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
 
 import { startCamera, stopCamera } from './vision/camera.js';
 import { loadOpenCV, checkFunctions } from './vision/cv-loader.js';
@@ -31,6 +32,10 @@ let lastValid = 0;
 
 onStateChange((state, _prev, detail) => renderState(state, detail));
 renderState(store.state);
+
+// PWA : fonctionnement hors ligne + badge (exigence du cahier des charges).
+registerServiceWorker();
+setupOfflineBadge();
 
 async function boot() {
   const errors = [];
