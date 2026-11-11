@@ -2,10 +2,12 @@
 
 /**
  * Charge le PNG transparent d'un haut. Limiter la taille (≤ 1024 px) pour la mémoire GPU.
- * TODO (Tasnim, S3) : new THREE.TextureLoader().loadAsync(url) ; colorSpace = THREE.SRGBColorSpace
+ * @returns {Promise<THREE.Texture>}
  */
 export async function loadGarmentTexture(THREE, url) {
-  throw new Error('loadGarmentTexture() pas encore implémenté (Tasnim, S3)');
+  const texture = await new THREE.TextureLoader().loadAsync(url);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 /**

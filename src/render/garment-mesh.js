@@ -9,38 +9,6 @@ export class GarmentMesh {
   constructor(THREE, scene) {
     this.THREE = THREE;
     this.scene = scene;
-
-    // Géométrie subdivisée : chaque quad est découpé en 2 triangles → la texture se déforme correctement sous perspective.
-    const geo = new THREE.PlaneGeometry(1, 1, GRID.cols, GRID.rows);
-    const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide });
-
-    this.mesh = new THREE.Mesh(geo, mat);
-    this.mesh.visible = false;
-    scene.add(this.mesh);
-  }
-
-  /** @param {Float32Array} vertices  [x0,y0, x1,y1, ...] pixels écran, ordre identique à GRID */
-  setVertices(vertices) {
-    const pos = this.mesh.geometry.attributes.position;
-    for (let i = 0; i < VERTEX_COUNT; i++) {
-      // y_scène = -y_écran (caméra orthographique : 0 en haut, -h en bas)
-      pos.setXY(i, vertices[i * 2], -vertices[i * 2 + 1]);
-    }
-    pos.needsUpdate = true;
-    this.mesh.geometry.computeBoundingSphere();
-  }
-
-  setVisible(visible) {
-    this.mesh.visible = visible;
-  }
-
-  // S3 : setTexture(texture) — libérer l'ancienne avant d'appliquer la nouvelle (F06)
-  setTexture(texture) {}
-
-  dispose() {
-    this.mesh.geometry.dispose();
-    this.mesh.material.dispose();
-    this.scene.remove(this.mesh);
     this.mesh = null;
   }
 }
