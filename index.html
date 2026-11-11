@@ -4,12 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SmartMirror AR</title>
+  <!-- PWA : carte d'identité de l'application + couleur de la barre de titre -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#111111" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
   <!-- Propriétaire : Eya (structure de l'interface) -->
   <header>
     <h1>SmartMirror AR</h1>
+    <span id="offline-badge" class="badge-offline" role="status" hidden>Hors ligne</span>
     <span id="status" class="status">Chargement…</span>
   </header>
 

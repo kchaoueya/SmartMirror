@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Version « maskable » : fond plein et dessin réduit dans la zone sûre centrale (80 %) -->
+  <rect width="512" height="512" fill="#111111"/>
+  <g transform="translate(256 256) scale(0.7) translate(-256 -256)">
+    <rect x="136" y="64" width="240" height="384" rx="120" fill="none" stroke="#7fd1ff" stroke-width="20"/>
+    <path d="M206 190 l-46 30 22 38 24-12 v96 h100 v-96 l24 12 22-38 -46-30 q-25 22 -50 0 z" fill="#eeeeee"/>
+  </g>
+</svg>
