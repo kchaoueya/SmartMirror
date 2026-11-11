@@ -32,6 +32,9 @@
       </label>
       <label>Inférences / s <input id="rate" type="range" min="5" max="30" value="15" /> <span id="rate-val">15</span></label>
       <label>Seuil de visibilité <input id="thr" type="range" min="0" max="1" step="0.05" value="0.5" /> <span id="thr-val">0.5</span></label>
+      <label><input id="flow" type="checkbox" checked /> Flux optique entre deux inférences (S4)</label>
+      <small>Vert/rouge : détection MediaPipe · bleu : flux optique · orange : repère rejeté, replacé avec le buste.
+        Baisser les inférences à 5/s rend la différence visible.</small>
       <button id="start">Démarrer</button>
       <button id="stop">Arrêter</button>
       <pre id="stats">—</pre>

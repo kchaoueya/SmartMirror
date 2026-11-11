@@ -4,14 +4,27 @@ import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
 import { LM } from '../contracts.js';
 
 export const MP_VERSION = '1.2.0'; // doit correspondre à package.json
-export const WASM_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`;
 
-/** Trois tailles de modèle : plus le modèle est gros, plus il est précis… et lent. À comparer en S2. */
+// Fichiers servis par le projet (public/mediapipe/) : l'application fonctionne sans Internet (volet PWA).
+// Le moteur WASM est copié depuis node_modules/@mediapipe/tasks-vision/wasm (même version que le code JS).
+// MediaPipe choisit seul le fichier : vision_wasm_internal (SIMD, tous les navigateurs récents).
+export const WASM_URL = '/mediapipe/wasm';
+
+const MODEL_CDN = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker';
+
+/** Trois tailles de modèle : plus le modèle est gros, plus il est précis… et lent. */
 export const MODELS = {
-  lite: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-  full: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task',
-  heavy: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task',
+  lite: '/mediapipe/pose_landmarker_lite.task',  // local : modèle par défaut, disponible hors ligne
+  full: '/mediapipe/pose_landmarker_full.task',  // local : pour comparer la précision
+  heavy: `${MODEL_CDN}/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task`, // ~30 Mo : en ligne seulement
 };
+
+/** Fichiers à mettre en cache par le Service Worker (public/sw.js) pour le lancement hors ligne. */
+export const OFFLINE_FILES = [
+  `${WASM_URL}/vision_wasm_internal.js`,
+  `${WASM_URL}/vision_wasm_internal.wasm`,
+  MODELS.lite,
+];
 
 /** Seuil de visibilité d'un repère (0..1). Valeur de départ, à régler par les essais puis à consigner. */
 export const MIN_VISIBILITY = 0.5;
@@ -34,6 +47,8 @@ export const MIN_VISIBILITY = 0.5;
  */
 export async function createPoseDetector({ model = 'lite' } = {}) {
   const t0 = performance.now();
+  await checkLocalFile(MODELS[model]);
+  await checkLocalFile(`${WASM_URL}/vision_wasm_internal.wasm`);
   const fileset = await FilesetResolver.forVisionTasks(WASM_URL);
 
   const options = (delegate) => ({
@@ -58,6 +73,26 @@ export async function createPoseDetector({ model = 'lite' } = {}) {
   const loadMs = Math.round(performance.now() - t0);
   console.info(`[MediaPipe] modèle « ${model} », délégué ${delegate}, chargé en ${loadMs} ms`);
   return { landmarker, delegate, model, loadMs, lastTimestamp: -1, lastVideoTime: -1, last: null };
+}
+
+/**
+ * Vérifie qu'un fichier local de MediaPipe est bien présent.
+ * Sans cette vérification, un fichier absent donne une erreur incompréhensible
+ * (« Unable to open zip archive ») : le serveur de développement renvoie alors index.html à sa place.
+ */
+async function checkLocalFile(url) {
+  if (!url.startsWith('/')) return; // fichier en ligne (modèle heavy) : rien à vérifier
+  let res;
+  try {
+    res = await fetch(url, { method: 'HEAD' });
+  } catch {
+    // Hors ligne : le Service Worker ne répond qu'aux GET, cette requête HEAD part donc sur le réseau et échoue.
+    // On laisse MediaPipe charger le fichier (GET), que le Service Worker sert depuis son cache.
+    return;
+  }
+  if (!res.ok || res.headers.get('content-type')?.includes('text/html')) {
+    throw new Error(`Fichier MediaPipe absent : ${url}. Voir public/mediapipe/README.md pour l'installer.`);
+  }
 }
 
 /**
