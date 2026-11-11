@@ -97,7 +97,7 @@ export function torsoToDisplay(raw, frame) {
       hr: screenRightHip.visibility,
     },
     visible: [sl, sr, hl, hr].every((p) => isVisibleOnScreen(p, frame)),
-    source: 'detection',
+    source: raw.source ?? 'detection', // 'optical-flow' quand les repères viennent de tracker.js
     timestamp: raw.timestamp,
   };
 }
