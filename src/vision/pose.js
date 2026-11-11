@@ -82,7 +82,14 @@ export async function createPoseDetector({ model = 'lite' } = {}) {
  */
 async function checkLocalFile(url) {
   if (!url.startsWith('/')) return; // fichier en ligne (modèle heavy) : rien à vérifier
-  const res = await fetch(url, { method: 'HEAD' });
+  let res;
+  try {
+    res = await fetch(url, { method: 'HEAD' });
+  } catch {
+    // Hors ligne : le Service Worker ne répond qu'aux GET, cette requête HEAD part donc sur le réseau et échoue.
+    // On laisse MediaPipe charger le fichier (GET), que le Service Worker sert depuis son cache.
+    return;
+  }
   if (!res.ok || res.headers.get('content-type')?.includes('text/html')) {
     throw new Error(`Fichier MediaPipe absent : ${url}. Voir public/mediapipe/README.md pour l'installer.`);
   }
