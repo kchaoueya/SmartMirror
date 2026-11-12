@@ -47,6 +47,9 @@
     </aside>
   </main>
 
+  <!-- WebXR polyfill : simule immersive-ar sur PC via getUserMedia (exigence cahier des charges) -->
+  <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@2.0.3/build/webxr-polyfill.js"></script>
+  <script>new WebXRPolyfill();</script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

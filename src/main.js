@@ -69,6 +69,14 @@ async function start() {
     return setState(e.code === 'denied' ? AppState.PERMISSION_DENIED : AppState.RESOURCE_ERROR, { message: e.message, source: 'camera' });
   }
   setState(AppState.SEARCHING);
+
+  // Ouvre la session WebXR immersive-ar (polyfill actif sur PC avec webcam USB).
+  // startXRSession retourne false si non supporté → l'appli tourne sans XR (repli propre).
+  if (ctx.gfx) {
+    const xrStarted = await ctx.gfx.startXRSession(document.body);
+    if (!xrStarted) console.warn('[XR] Session non démarrée — rendu sans WebXR');
+  }
+
   loopId = requestAnimationFrame(loop);
 }
 
