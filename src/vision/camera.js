@@ -64,10 +64,34 @@ export function onCameraListChange(callback) {
   navigator.mediaDevices?.addEventListener?.('devicechange', callback);
 }
 
+/**
+ * Qualités demandées, de la meilleure à la plus sûre. Certaines webcams USB bon marché ne démarrent pas
+ * en 1280×720 sous Windows (« AbortError: Timeout starting video source ») mais marchent en 640×480.
+ */
+const QUALITIES = [
+  { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+  { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+  {}, // format natif de la caméra
+];
+
 /** Contraintes vidéo : une caméra précise si on la connaît, sinon celle par défaut du navigateur. */
-function videoConstraints(deviceId) {
-  const quality = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
+function videoConstraints(deviceId, quality = QUALITIES[0]) {
   return deviceId ? { ...quality, deviceId: { exact: deviceId } } : quality;
+}
+
+/** Ouvre la caméra en baissant la qualité si elle refuse de démarrer (AbortError / NotReadableError). */
+async function openCamera(deviceId) {
+  let lastError;
+  for (const quality of QUALITIES) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: videoConstraints(deviceId, quality), audio: false });
+    } catch (e) {
+      lastError = e;
+      if (e?.name !== 'AbortError' && e?.name !== 'NotReadableError') throw e;
+      console.warn(`[Caméra] échec en ${quality.width?.ideal ?? 'natif'}×${quality.height?.ideal ?? ''}, essai suivant :`, e.message);
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -89,12 +113,12 @@ export async function startCamera(video, { deviceId = getSavedCameraId(), onDisc
   //    autre port USB), on réessaie une fois avec la caméra par défaut.
   let stream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints(deviceId), audio: false });
+    stream = await openCamera(deviceId);
   } catch (e) {
     const missing = deviceId && (e?.name === 'OverconstrainedError' || e?.name === 'NotFoundError');
     if (!missing) throw cameraError(toCode(e), e);
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints(null), audio: false });
+      stream = await openCamera(null);
     } catch (e2) {
       throw cameraError(toCode(e2), e2);
     }
