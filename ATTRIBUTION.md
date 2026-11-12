@@ -10,21 +10,21 @@
 ## 1. Modèles 3D, Textures et Assets Graphiques
 
 *   **Asset :** `public/assets/garments/tshirt.png` — texture PNG transparente (t-shirt)
-    *   **Source originale :** À compléter (image créée/retravaillée par l'équipe ou site de ressources libres)
-    *   **Auteur / Créateur :** À compléter
-    *   **Licence :** À compléter
-    *   **Modifications apportées :** Fond supprimé pour obtenir un PNG RGBA avec canal alpha ; recadrage pour centrer le vêtement ; taille réduite à ≤ 1024 px pour respecter la contrainte mémoire GPU documentée dans `src/render/textures.js`
+    *   **Source originale :** Image placeholder générée programmatiquement par le script `scripts/generate-placeholders.mjs` (commit `67579a3`). À remplacer par une vraie texture en S3/S5.
+    *   **Auteur / Créateur :** Tasnim Selmi — SmartMirror AR, SUP'COM 2026/2027
+    *   **Licence :** Propriété de l'équipe SmartMirror AR — usage académique exclusif
+    *   **Modifications apportées :** PNG RGBA 512×512 généré entièrement en JavaScript (encodeur PNG minimal, canal alpha transparent, silhouette synthétique) ; aucune image tierce utilisée.
 
 *   **Asset :** `public/assets/garments/chemise.png` — texture PNG transparente (chemise)
-    *   **Source originale :** À compléter
-    *   **Auteur / Créateur :** À compléter
-    *   **Licence :** À compléter
+    *   **Source originale :** Image placeholder générée par `scripts/generate-placeholders.mjs` (même commit).
+    *   **Auteur / Créateur :** Tasnim Selmi — SmartMirror AR, SUP'COM 2026/2027
+    *   **Licence :** Propriété de l'équipe SmartMirror AR — usage académique exclusif
     *   **Modifications apportées :** Mêmes traitements que tshirt.png
 
 *   **Asset :** `public/assets/garments/sweat.png` — texture PNG transparente (sweat)
-    *   **Source originale :** À compléter
-    *   **Auteur / Créateur :** À compléter
-    *   **Licence :** À compléter
+    *   **Source originale :** Image placeholder générée par `scripts/generate-placeholders.mjs` (même commit).
+    *   **Auteur / Créateur :** Tasnim Selmi — SmartMirror AR, SUP'COM 2026/2027
+    *   **Licence :** Propriété de l'équipe SmartMirror AR — usage académique exclusif
     *   **Modifications apportées :** Mêmes traitements que tshirt.png
 
 > Les textures sont chargées et appliquées sur un maillage WebGPU via `src/render/textures.js` (loadGarmentTexture) et `src/render/garment-mesh.js` (setTexture).
