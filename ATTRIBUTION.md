@@ -85,6 +85,15 @@
     *   **Usage principal :** Génération du squelette de la machine à états (`AppState`, transitions, `onStateChange`) et de la structure du catalogue de vêtements (`loadCatalog`, `renderState`) ; aide à la rédaction des conditions de transition entre les états `SEARCHING`, `TRACKING` et `LOST` (section 2.3.2 du cahier des charges)
     *   **Axe de vérification appliqué :** Validation de toutes les transitions via les tests unitaires (`tests/`) ; test manuel en coupant la caméra pour vérifier le passage vers `PERMISSION_DENIED` et `LOST` ; vérification que l'état `WEBGPU_UNAVAILABLE` est bien attrapé dans `main.js` sans crash.
 
+*   **Composant :** [`src/render/renderer.js`](src/render/renderer.js) et [`index.html`](index.html) — remplacement de la session WebXR `immersive-ar` + polyfill par une session `inline` native
+    *   **Responsable :** Tasnim Selmi
+    *   **Modèle IA :** Claude Sonnet 4.6 (`claude-sonnet-4-6`) — Anthropic, novembre 2025
+    *   **Prompt exact :**
+        > « t sure ? il n'ya pas une autre méthode plus naturelle pour utiliser ce webxr device api ? car ce polyfill ne me semble pas la meilleure solution ! »
+        > puis : « oui » (confirmation du refactor proposé)
+    *   **Usage principal :** Identification que `immersive-ar` + polyfill CDN est inadapté à une application miroir sur écran PC ; proposition et implémentation du remplacement par une session WebXR `inline` native (suppression du polyfill dans `index.html`, réécriture de `startXRSession()` dans `renderer.js`, mise à jour du commentaire dans `main.js`).
+    *   **Axe de vérification appliqué :** Lecture de la documentation WebXR Device API (MDN) pour confirmer que `inline` est le type de session correct pour une AR dans la page sans casque ; vérification que `setAnimationLoop` de Three.js reçoit toujours le `XRFrame` avec une session `inline` ; test que l'application démarre sans erreur `navigator.xr` sur Chrome (aucun polyfill requis).
+
 *   **Composant :** [`ATTRIBUTION.md`](ATTRIBUTION.md) — ce fichier
     *   **Responsable :** Tasnim Selmi
     *   **Usage principal :** Génération du document à partir du template fourni par le professeur, rempli avec les données réelles du projet (versions, fichiers, lignes de code, noms des membres de l'équipe)
