@@ -89,7 +89,7 @@
     *   **Responsable :** Tasnim Selmi
     *   **Modèle IA :** Claude Sonnet 4.6 (`claude-sonnet-4-6`) — Anthropic, novembre 2025
     *   **Prompt exact :**
-        > « t sure ? il n'ya pas une autre méthode plus naturelle pour utiliser ce webxr device api ? car ce polyfill ne me semble pas la meilleure solution ! »
+        > « Est-ce qu'il n'y a pas une méthode plus naturelle pour utiliser la WebXR Device API ? Ce polyfill ne me semble pas la meilleure solution. »
         > puis : « oui » (confirmation du refactor proposé)
     *   **Usage principal :** Identification que `immersive-ar` + polyfill CDN est inadapté à une application miroir sur écran PC ; proposition et implémentation du remplacement par une session WebXR `inline` native (suppression du polyfill dans `index.html`, réécriture de `startXRSession()` dans `renderer.js`, mise à jour du commentaire dans `main.js`).
     *   **Axe de vérification appliqué :** Lecture de la documentation WebXR Device API (MDN) pour confirmer que `inline` est le type de session correct pour une AR dans la page sans casque ; vérification que `setAnimationLoop` de Three.js reçoit toujours le `XRFrame` avec une session `inline` ; test que l'application démarre sans erreur `navigator.xr` sur Chrome (aucun polyfill requis).
