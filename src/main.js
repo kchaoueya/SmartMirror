@@ -9,18 +9,24 @@ import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
 
 import { startCamera, stopCamera } from './vision/camera.js';
 import { loadOpenCV, checkFunctions } from './vision/cv-loader.js';
-import { createPoseDetector, detectTorso, isTorsoReliable } from './vision/pose.js';
+import { createPoseDetector, detectTorso, torsoReliability } from './vision/pose.js';
 import { OpticalFlowTracker } from './vision/tracker.js';
-import { TorsoFilter } from './vision/filters.js';
-import { computeFrame, torsoToDisplay } from './vision/coords.js';
-import { destinationCorners, computeTransform } from './vision/geometry.js';
+import { TorsoFilter, EmaFilter } from './vision/filters.js';
+import { computeFrame, torsoToDisplay, isVisibleOnScreen } from './vision/coords.js';
+import { destinationCorners, computeTransform, estimateHips, torsoRatio, DEFAULT_TORSO_RATIO } from './vision/geometry.js';
 
 import { createRenderer, THREE } from './render/renderer.js';
 import { GarmentMesh } from './render/garment-mesh.js';
 import { loadGarmentTexture } from './render/textures.js';
 
 const INFERENCE_INTERVAL_MS = 66; // ≈ 15 inférences/s, à fixer après les mesures S1
-const LOST_DELAY_MS = 500;        // délai avant masquage (F08), à fixer en S4
+// Délai avant masquage (F08) : ≈ 7 inférences manquées à 15/s. Plus court, le vêtement clignote au moindre
+// raté de MediaPipe ; plus long, il reste figé à l'écran quand la personne est partie. Égal à maxAgeMs du
+// tracker : au-delà, le flux optique n'a plus de détection récente pour le recaler.
+const LOST_DELAY_MS = 500;
+// Perte longue : au-delà, on considère que la personne est partie et on repart de zéro (S4) :
+// état SEARCHING, suivi, filtres et proportions du buste réinitialisés (la suivante peut être quelqu'un d'autre).
+const SEARCH_RESET_MS = 2000;
 
 const video = document.getElementById('video');
 const diagCtx = document.getElementById('diag-canvas').getContext('2d');
@@ -29,6 +35,9 @@ const stats = document.getElementById('stats');
 const ctx = { cv: null, detector: null, tracker: null, gfx: null, garment: null, catalog: null };
 // Lissage des repères (Salma, S4, F04) : 'kalman', 'ema' ou 'none' (brut, pour la comparaison).
 const torsoFilter = new TorsoFilter({ mode: 'kalman' });
+// Proportions du buste de la personne (hauteur / largeur des épaules), apprises tant que les hanches sont
+// visibles, puis utilisées par le mode dégradé « épaules seules » (Salma, S5).
+const ratioFilter = new EmaFilter(0.1);
 
 function selectGarment(g) {
   store.fit = g.fit;
@@ -43,6 +52,20 @@ let lastInference = 0;
 let lastValid = 0;
 let lastRaw = null; // dernière mesure traitée : detectTorso / tracker.update renvoient le même objet s'il n'y a pas de nouvelle image
 let seen = null;    // derniers repères vus, même peu fiables (affichés par le diagnostic)
+let trackLevel = 'none'; // niveau de la détection d'où repart le flux optique ('full' ou 'shoulders')
+let mode = 'none';       // niveau des derniers repères valides, affiché en diagnostic
+let lostSince = 0;
+
+/** Repart de zéro : plus de repères, ni de suivi, ni d'historique de filtre. */
+function resetTracking() {
+  store.landmarks = null;
+  seen = null;
+  lastRaw = null;
+  trackLevel = mode = 'none';
+  ctx.tracker?.reset(null, video);
+  torsoFilter.reset();
+  ratioFilter.reset();
+}
 
 onStateChange((state, _prev, detail) => renderState(state, detail));
 renderState(store.state);
@@ -110,11 +133,7 @@ function stop() {
   stopCamera(video);
   ctx.garment?.setVisible(false);
   clearDiagnostic(diagCtx);
-  store.landmarks = null;
-  seen = null;
-  lastRaw = null;
-  ctx.tracker?.reset(null, video);
-  torsoFilter.reset();
+  resetTracking();
   setState(AppState.STOPPED);
 }
 
@@ -122,40 +141,56 @@ function loop(now) {
   loopId = requestAnimationFrame(loop);
 
   // 1. Repères (Salma) : détection MediaPipe à cadence réduite, flux optique entre deux inférences (S4).
+  // level : 'full' (4 repères fiables), 'shoulders' (mode dégradé, S5) ou 'none'.
   let raw = null;
-  let reliable = false;
+  let level = 'none';
   if (ctx.detector && now - lastInference >= INFERENCE_INTERVAL_MS) {
     lastInference = now;
     raw = detectTorso(ctx.detector, video, now);
     inferRate.tick(now);
-    reliable = isTorsoReliable(raw);
+    level = torsoReliability(raw);
     // Chaque détection fiable relance le suivi depuis les vrais repères (pas de dérive du flux optique).
-    if (reliable) ctx.tracker?.reset(raw, video, now);
+    if (level !== 'none') { ctx.tracker?.reset(raw, video, now); trackLevel = level; }
   } else if (ctx.tracker) {
     // Le tracker ne part que d'une détection fiable et s'arrête seul (maxAgeMs, trop de repères rejetés).
     raw = ctx.tracker.update(video, now);
-    reliable = raw !== null;
+    level = raw ? trackLevel : 'none';
   }
 
   // 2. Conversion vers l'écran puis lissage (F04). Une même mesure n'est filtrée qu'une fois.
   const frame = raw && raw !== lastRaw ? computeFrame(video, true) : null; // true = miroir, comme le CSS
   if (frame) {
     lastRaw = raw;
-    const torso = torsoToDisplay(raw, frame);
-    // Le vêtement n'est placé que si les 4 repères sont fiables ET visibles à l'écran (F02, F08).
-    if (reliable && torso.visible) {
+    let torso = torsoToDisplay(raw, frame);
+    // Le vêtement n'est placé que si les repères utilisés sont fiables ET visibles à l'écran (F02, F08).
+    // En mode « épaules seules », les hanches sont justement souvent hors champ : seules les épaules comptent.
+    const onScreen = level === 'full'
+      ? torso.visible
+      : isVisibleOnScreen(torso.sl, frame) && isVisibleOnScreen(torso.sr, frame);
+    if (level !== 'none' && onScreen) {
+      if (level === 'full') {
+        const r = torsoRatio(torso);
+        if (r !== null) ratioFilter.update(r); // apprend les proportions de cette personne
+      } else {
+        torso = estimateHips(torso, ratioFilter.value ?? DEFAULT_TORSO_RATIO);
+      }
       store.landmarks = torsoFilter.update(torso, now);
       lastValid = now;
+      mode = level;
       seen = store.landmarks;
     } else {
       seen = torso; // peu fiable : affiché en diagnostic, mais le vêtement reste à la dernière position valide
     }
   }
 
-  // 3. Validité du suivi (F08).
+  // 3. Validité du suivi (F08) : masquage après LOST_DELAY_MS, réinitialisation après SEARCH_RESET_MS.
   const valid = store.landmarks && now - lastValid < LOST_DELAY_MS;
   if (valid && store.state !== AppState.TRACKING) setState(AppState.TRACKING);
-  if (!valid && store.state === AppState.TRACKING) setState(AppState.LOST);
+  if (!valid && store.state === AppState.TRACKING && setState(AppState.LOST)) lostSince = now;
+  if (store.state === AppState.LOST && now - lostSince > SEARCH_RESET_MS) {
+    resetTracking();
+    setState(AppState.SEARCHING);
+  }
 
   // 4. Homographie OpenCV.js (Salma) → maillage (Tasnim).
   let transform = null;
@@ -173,7 +208,8 @@ function loop(now) {
   // 6. Diagnostic et métriques (Eya).
   if (store.diagnostic) {
     drawDiagnostic(diagCtx, seen, transform);
-    stats.textContent = `rendu : ${renderRate.fps} img/s\ninférence : ${inferRate.fps} /s\nétat : ${store.state}`;
+    const modeLabel = { full: 'buste complet', shoulders: 'épaules seules', none: '—' }[mode];
+    stats.textContent = `rendu : ${renderRate.fps} img/s\ninférence : ${inferRate.fps} /s\nétat : ${store.state}\nmode : ${modeLabel}`;
   }
 }
 

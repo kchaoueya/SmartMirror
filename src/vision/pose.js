@@ -146,6 +146,24 @@ export function isTorsoReliable(raw, minVisibility = MIN_VISIBILITY) {
     .every((p) => p.visibility >= minVisibility);
 }
 
+/**
+ * Niveau de fiabilité du buste (S5) :
+ *  - 'full'      : les 4 repères sont fiables → placement normal ;
+ *  - 'shoulders' : seules les 2 épaules sont fiables (hanches hors champ ou cachées) → mode dégradé,
+ *                  hanches estimées par geometry.estimateHips (similitude) ;
+ *  - 'none'      : pas de placement possible.
+ * @param {RawTorso|null} raw
+ * @param {number} [minVisibility]
+ * @returns {'full'|'shoulders'|'none'}
+ */
+export function torsoReliability(raw, minVisibility = MIN_VISIBILITY) {
+  if (!raw) return 'none';
+  const shoulders = raw.leftShoulder.visibility >= minVisibility && raw.rightShoulder.visibility >= minVisibility;
+  if (!shoulders) return 'none';
+  const hips = raw.leftHip.visibility >= minVisibility && raw.rightHip.visibility >= minVisibility;
+  return hips ? 'full' : 'shoulders';
+}
+
 /** Libère le modèle (appelé à la fermeture de l'application). */
 export function closePoseDetector(detector) {
   detector?.landmarker?.close();
