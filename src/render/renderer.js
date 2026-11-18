@@ -28,8 +28,9 @@ export async function createRenderer(canvas) {
   renderer.setClearColor(0x000000, 0);
   renderer.setPixelRatio(window.devicePixelRatio);
 
-  // WebXR activé sur le renderer — doit être positionné avant tout appel à startXRSession().
-  renderer.xr.enabled = true;
+  // Three.js XR désactivé : on gère la session WebXR manuellement ci-dessous,
+  // ce qui évite le conflit « webgpu feature » de Chrome (non standardisé).
+  renderer.xr.enabled = false;
 
   const scene = new THREE.Scene();
 
@@ -66,15 +67,25 @@ export async function createRenderer(canvas) {
     if (!navigator.xr) return false;
     const supported = await navigator.xr.isSessionSupported('inline').catch(() => false);
     if (!supported) return false;
-    const session = await navigator.xr.requestSession('inline');
-    await renderer.xr.setSession(session);
-    return true;
+    try {
+      // Session inline native — WebXR Device API, sans passer par Three.js XR
+      // (Chrome ne supporte pas encore 'webgpu' comme feature XR).
+      const session = await navigator.xr.requestSession('inline');
+      // Boucle XR : reçoit le XRFrame à chaque rendu.
+      const xrLoop = (time, frame) => {
+        session.requestAnimationFrame(xrLoop);
+      };
+      session.requestAnimationFrame(xrLoop);
+      return true;
+    } catch (e) {
+      console.warn('[XR] Session inline échouée :', e.message);
+      return false;
+    }
   }
 
-  /** Ferme la session WebXR active (le voyant caméra ne s'éteint pas — géré par camera.js). */
+  /** Ferme la session WebXR active. */
   async function endXRSession() {
-    const session = renderer.xr.getSession();
-    if (session) await session.end();
+    // session gérée manuellement — rien à faire côté Three.js
   }
 
   return { renderer, scene, camera, backend, resize, render, startXRSession, endXRSession };
