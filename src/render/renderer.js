@@ -1,4 +1,4 @@
-// Propriétaire : Tasnim — S1 (F09), S2 (redimensionnement), S6 (WebXR + polyfill)
+// Propriétaire : Tasnim — S1 (F09), S2 (redimensionnement), S6 (WebXR inline)
 import * as THREE from 'three/webgpu';
 
 /**
@@ -58,19 +58,15 @@ export async function createRenderer(canvas) {
   function render() {}
 
   /**
-   * Ouvre une session WebXR immersive-ar.
-   * Pré-requis : le polyfill WebXR doit être chargé dans index.html avant main.js (Eya).
-   * @param {HTMLElement} [domOverlayRoot=document.body]  racine pour garder l'UI HTML visible par-dessus
+   * Ouvre une session WebXR inline (WebXR Device API — session dans la page, sans plein écran).
+   * Compatible PC/mobile nativement, aucun polyfill requis.
    * @returns {Promise<boolean>}  true = session ouverte, false = non supporté (repli sans XR)
    */
-  async function startXRSession(domOverlayRoot = document.body) {
+  async function startXRSession() {
     if (!navigator.xr) return false;
-    const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+    const supported = await navigator.xr.isSessionSupported('inline').catch(() => false);
     if (!supported) return false;
-    const session = await navigator.xr.requestSession('immersive-ar', {
-      optionalFeatures: ['dom-overlay'],
-      domOverlay: { root: domOverlayRoot },
-    });
+    const session = await navigator.xr.requestSession('inline');
     await renderer.xr.setSession(session);
     return true;
   }

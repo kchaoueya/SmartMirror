@@ -70,10 +70,10 @@ async function start() {
   }
   setState(AppState.SEARCHING);
 
-  // Ouvre la session WebXR immersive-ar (polyfill actif sur PC avec webcam USB).
+  // Ouvre une session WebXR inline (native, sans polyfill).
   // startXRSession retourne false si non supporté → l'appli tourne sans XR (repli propre).
   if (ctx.gfx) {
-    const xrStarted = await ctx.gfx.startXRSession(document.body);
+    const xrStarted = await ctx.gfx.startXRSession();
     if (!xrStarted) console.warn('[XR] Session non démarrée — rendu sans WebXR');
   }
 
