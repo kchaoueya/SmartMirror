@@ -15,6 +15,7 @@ import { destinationCorners, computeTransform } from './vision/geometry.js';
 
 import { createRenderer, THREE } from './render/renderer.js';
 import { GarmentMesh } from './render/garment-mesh.js';
+import { loadGarmentTexture } from './render/textures.js';
 
 const INFERENCE_INTERVAL_MS = 66; // ≈ 15 inférences/s, à fixer après les mesures S1
 const LOST_DELAY_MS = 500;        // délai avant masquage (F08), à fixer en S4
@@ -55,7 +56,15 @@ async function boot() {
   } else if (gfx.reason.code === 'webgpu-unavailable') {
     return setState(AppState.WEBGPU_UNAVAILABLE);
   } else errors.push(gfx.reason.message);
-  if (catalog.status === 'fulfilled') ctx.catalog = catalog.value; else errors.push(catalog.reason.message);
+  if (catalog.status === 'fulfilled') {
+    ctx.catalog = catalog.value;
+    // Charge la texture du premier haut dès le boot (Tasnim S3).
+    if (ctx.garment && ctx.catalog.garments?.length) {
+      loadGarmentTexture(THREE, ctx.catalog.garments[0].texture)
+        .then(tex => ctx.garment.setTexture(tex))
+        .catch(e => console.warn('[Texture] chargement échoué :', e.message));
+    }
+  } else errors.push(catalog.reason.message);
 
   if (errors.length) console.warn('Modules non prêts :\n- ' + errors.join('\n- '));
   setState(AppState.READY, errors.length ? { message: `Prêt (${errors.length} module(s) à implémenter, voir console)` } : {});
