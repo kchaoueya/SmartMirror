@@ -33,8 +33,29 @@ export function renderState(state, detail = {}) {
 }
 
 /**
+ * Construit les boutons du catalogue et branche la sélection.
+ * @param {object[]} garments  liste du catalogue
+ * @param {function} onSelect  callback(garment)
+ */
+export function buildCatalog(garments, onSelect) {
+  const container = $('catalog');
+  container.innerHTML = '';
+  garments.forEach((g, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = g.name;
+    btn.dataset.id = g.id;
+    btn.className = 'catalog-btn' + (i === 0 ? ' active' : '');
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.catalog-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      onSelect(g);
+    });
+    container.appendChild(btn);
+  });
+}
+
+/**
  * Branche les commandes. Les callbacks sont fournis par main.js.
- * TODO (Eya, S3–S5) : construire #catalog et #colors à partir de catalog.json.
  */
 export function bindControls({ onStart, onStop, onAdjust, onReset, onDiagnostic }) {
   $('btn-start').addEventListener('click', onStart);

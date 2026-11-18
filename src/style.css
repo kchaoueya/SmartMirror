@@ -21,6 +21,9 @@ main { display: flex; gap: 1rem; padding: 0 1rem 1rem; }
 aside { width: 16rem; display: flex; flex-direction: column; gap: .4rem; }
 aside h2 { font-size: 1rem; margin: .6rem 0 .2rem; }
 button { padding: .4rem .8rem; cursor: pointer; }
+#catalog { display: flex; flex-wrap: wrap; gap: .4rem; }
+.catalog-btn { background: #333; color: #eee; border: 1px solid #555; border-radius: 6px; }
+.catalog-btn.active { background: #2d6be4; border-color: #2d6be4; }
 #stats { font-size: .75rem; white-space: pre-wrap; }
 
 @media (max-width: 800px) {
