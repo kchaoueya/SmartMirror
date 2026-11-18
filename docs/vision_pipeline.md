@@ -96,11 +96,16 @@ a = (H − S) / h          // axe du buste (vecteur unitaire, vers le bas)
 Les quatre coins de destination, dans l'ordre haut-gauche, haut-droit, bas-droit, bas-gauche :
 
 ```
-demi-largeur épaules  = ks · w / 2    // coins haut : S.x ± ks·w/2
-demi-largeur hanches  = kh · w / 2    // coins bas  : H.x ± kh·w/2
-centre haut           = S − dc · h · ĵ    (ĵ = vecteur vers le haut)
-centre bas            = H + db · h · ĵ
+u = (Sd − Sg) / w                      // axe des épaules (vecteur unitaire, vers la droite de l'écran)
+centre haut   T = S − dc · h · a       // encolure, au-dessus des épaules
+centre bas    B = H + db · h · a       // bas du vêtement, sous les hanches
+C₁ = T − (ks·w/2)·u    C₂ = T + (ks·w/2)·u     // haut-gauche, haut-droit
+C₃ = B + (kh·w/2)·u    C₄ = B − (kh·w/2)·u     // bas-droit, bas-gauche
 ```
+
+Les coins sont construits dans le repère du buste `(u, a)` et non dans celui de l'écran :
+quand la personne penche les épaules, le vêtement tourne avec elle (testé dans `tests/geometry.test.mjs`).
+Si `w` ou `h` < 20 px (buste de profil ou trop loin), `destinationCorners` renvoie `null`.
 
 | Coefficient | Rôle | Exemple |
 |-------------|------|---------|
