@@ -2,9 +2,12 @@
 // Le squelette démarre même si les modules ne sont pas encore implémentés : l'erreur s'affiche dans le statut.
 import { AppState, DEFAULT_ADJUST } from './contracts.js';
 import { store, setState, onStateChange } from './state.js';
-import { renderState, bindControls, resetControls, loadCatalog } from './ui/ui.js';
+import {
+  renderState, bindControls, resetControls, loadCatalog, renderCatalog, setCalibration, bindCalibration,
+  showCalibration, loadSavedAdjust, showRecording, showMeasures,
+} from './ui/ui.js';
 import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.js';
-import { RateCounter } from './metrics/metrics.js';
+import { RateCounter, LandmarkRecorder, torsoSample, downloadJSON } from './metrics/metrics.js';
 import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
 
 import { startCamera, stopCamera } from './vision/camera.js';
@@ -27,6 +30,7 @@ const stats = document.getElementById('stats');
 const ctx = { cv: null, detector: null, gfx: null, garment: null, catalog: null };
 const renderRate = new RateCounter();
 const inferRate = new RateCounter();
+const recorder = new LandmarkRecorder(); // mesure de stabilité (S4, F04), mode diagnostic
 let loopId = 0;
 let lastInference = 0;
 let lastValid = 0;
@@ -58,16 +62,39 @@ async function boot() {
   } else errors.push(gfx.reason.message);
   if (catalog.status === 'fulfilled') {
     ctx.catalog = catalog.value;
-    // Charge la texture du premier haut dès le boot (Tasnim S3).
-    if (ctx.garment && ctx.catalog.garments?.length) {
-      loadGarmentTexture(THREE, ctx.catalog.garments[0].texture)
-        .then(tex => ctx.garment.setTexture(tex))
-        .catch(e => console.warn('[Texture] chargement échoué :', e.message));
-    }
+    // Texture du premier haut chargée dès le boot (Tasnim S3), via selectGarment : le même chemin sert
+    // ensuite au changement de haut dans le catalogue (un seul chargement, pas de course entre deux textures).
+    await selectGarment(ctx.catalog.garments[0].id);
   } else errors.push(catalog.reason.message);
 
   if (errors.length) console.warn('Modules non prêts :\n- ' + errors.join('\n- '));
   setState(AppState.READY, errors.length ? { message: `Prêt (${errors.length} module(s) à implémenter, voir console)` } : {});
+}
+
+/** Vêtement actuellement choisi dans le catalogue. */
+function currentGarment() {
+  return ctx.catalog?.garments.find((g) => g.id === store.garmentId) ?? null;
+}
+
+/** Choix d'un haut dans le catalogue (S3) : texture chargée puis donnée au maillage, fit repris pour la calibration. */
+async function selectGarment(id) {
+  const garment = ctx.catalog?.garments.find((g) => g.id === id);
+  if (!garment) return;
+  store.garmentId = id;
+  store.fit = { ...garment.fit };
+  setCalibration(store.fit);
+  renderCatalog(ctx.catalog, id, selectGarment);
+  if (!ctx.garment) return;
+  try {
+    const texture = await loadGarmentTexture(THREE, garment.texture);
+    if (store.garmentId !== id) { texture.dispose(); return; } // un autre haut a été choisi entre-temps
+    ctx.garment.setTexture(texture); // libère la texture précédente (garment-mesh.js)
+  } catch (e) {
+    console.error(`[Catalogue] texture de « ${garment.name} » introuvable :`, e);
+    if (store.state === AppState.TRACKING || store.state === AppState.SEARCHING || store.state === AppState.LOST) {
+      setState(AppState.RESOURCE_ERROR, { message: `Texture de « ${garment.name} » indisponible : choisissez un autre haut.` });
+    }
+  }
 }
 
 async function start() {
@@ -81,9 +108,15 @@ async function start() {
 
   // Ouvre une session WebXR inline (native, sans polyfill).
   // startXRSession retourne false si non supporté → l'appli tourne sans XR (repli propre).
+  // try/catch : un échec WebXR (ex. three.js refuse une session sans la fonctionnalité « webgpu » avec le
+  // backend WebGPU) ne doit pas empêcher la boucle d'essayage de démarrer.
   if (ctx.gfx) {
-    const xrStarted = await ctx.gfx.startXRSession();
-    if (!xrStarted) console.warn('[XR] Session non démarrée — rendu sans WebXR');
+    try {
+      const xrStarted = await ctx.gfx.startXRSession();
+      if (!xrStarted) console.warn('[XR] Session non démarrée — rendu sans WebXR');
+    } catch (e) {
+      console.warn('[XR] Échec de la session WebXR, rendu sans WebXR :', e?.message ?? e);
+    }
   }
 
   loopId = requestAnimationFrame(loop);
@@ -110,6 +143,8 @@ function loop(now) {
     if (raw && frame) {
       const torso = torsoToDisplay(raw, frame);
       store.landmarks = torso;
+      // smooth : à remplacer par la sortie de filters.js quand le filtre sera branché (S4).
+      recorder.push({ t: now, source: torso.source, raw: torsoSample(torso), smooth: null });
       // Le vêtement n'est placé que si les 4 repères sont fiables ET visibles à l'écran (F02, F08).
       if (isTorsoReliable(raw) && torso.visible) lastValid = now;
     }
@@ -123,9 +158,12 @@ function loop(now) {
   // 3. Homographie OpenCV.js (Salma) → maillage (Tasnim).
   let transform = null;
   if (valid && ctx.cv) {
-    const fit = ctx.catalog?.garments?.[0]?.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
+    const garment = currentGarment();
+    // store.fit = fit du haut choisi, modifiable par les curseurs de calibration (mode diagnostic).
+    const fit = store.fit ?? garment?.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
+    const [texW, texH] = garment?.size ?? [1024, 1024];
     const corners = destinationCorners(store.landmarks, fit, store.adjust);
-    transform = computeTransform(ctx.cv, corners, 1024, 1024);
+    transform = computeTransform(ctx.cv, corners, texW, texH);
   }
   if (transform) ctx.garment?.setVertices(transform.vertices);
   ctx.garment?.setVisible(Boolean(valid && transform));
@@ -145,7 +183,32 @@ bindControls({
   onStop: stop,
   onAdjust: (a) => { store.adjust = a; },
   onReset: () => { store.adjust = { ...DEFAULT_ADJUST }; resetControls(store.adjust); },
-  onDiagnostic: (on) => { store.diagnostic = on; if (!on) { clearDiagnostic(diagCtx); stats.textContent = ''; } },
+  onDiagnostic: (on) => {
+    store.diagnostic = on;
+    showCalibration(on);
+    showMeasures(on);
+    if (!on) { clearDiagnostic(diagCtx); stats.textContent = ''; }
+  },
+  onRecord: () => {
+    if (recorder.active) {
+      recorder.stop();
+      const summary = recorder.summary();
+      console.info('[Mesure] stabilité :', summary);
+      showRecording(false, summary);
+    } else {
+      recorder.start();
+      showRecording(true);
+    }
+  },
+  onExport: () => {
+    const garment = currentGarment();
+    downloadJSON(recorder.toJSON({ garment: garment?.id, fit: store.fit, adjust: store.adjust }),
+      `mesure-stabilite-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`);
+  },
 });
+// Réglages de la dernière visite (F07) : retrouvés au lancement.
+const savedAdjust = loadSavedAdjust();
+if (savedAdjust) { store.adjust = savedAdjust; resetControls(savedAdjust); }
+bindCalibration((fit) => { store.fit = fit; });
 
 boot();

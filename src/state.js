@@ -32,6 +32,8 @@ export const store = {
   landmarks: null,
   garmentId: null,
   colorId: null,
+  /** @type {import('./contracts.js').GarmentFit|null} fit du haut choisi (modifiable en calibration) */
+  fit: null,
   adjust: { ...DEFAULT_ADJUST },
   diagnostic: false,
 };
