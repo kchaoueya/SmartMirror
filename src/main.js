@@ -10,6 +10,8 @@ import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
 import { startCamera, stopCamera } from './vision/camera.js';
 import { loadOpenCV, checkFunctions } from './vision/cv-loader.js';
 import { createPoseDetector, detectTorso, isTorsoReliable } from './vision/pose.js';
+import { OpticalFlowTracker } from './vision/tracker.js';
+import { TorsoFilter } from './vision/filters.js';
 import { computeFrame, torsoToDisplay } from './vision/coords.js';
 import { destinationCorners, computeTransform } from './vision/geometry.js';
 
@@ -24,7 +26,9 @@ const video = document.getElementById('video');
 const diagCtx = document.getElementById('diag-canvas').getContext('2d');
 const stats = document.getElementById('stats');
 
-const ctx = { cv: null, detector: null, gfx: null, garment: null, catalog: null };
+const ctx = { cv: null, detector: null, tracker: null, gfx: null, garment: null, catalog: null };
+// Lissage des repères (Salma, S4, F04) : 'kalman', 'ema' ou 'none' (brut, pour la comparaison).
+const torsoFilter = new TorsoFilter({ mode: 'kalman' });
 
 function selectGarment(g) {
   store.fit = g.fit;
@@ -37,6 +41,8 @@ const inferRate = new RateCounter();
 let loopId = 0;
 let lastInference = 0;
 let lastValid = 0;
+let lastRaw = null; // dernière mesure traitée : detectTorso / tracker.update renvoient le même objet s'il n'y a pas de nouvelle image
+let seen = null;    // derniers repères vus, même peu fiables (affichés par le diagnostic)
 
 onStateChange((state, _prev, detail) => renderState(state, detail));
 renderState(store.state);
@@ -54,7 +60,12 @@ async function boot() {
     createRenderer(document.getElementById('render-canvas')),
     loadCatalog(),
   ]);
-  if (cv.status === 'fulfilled') { ctx.cv = cv.value; console.info('[OpenCV.js]', checkFunctions(ctx.cv)); } else errors.push(cv.reason.message);
+  if (cv.status === 'fulfilled') {
+    ctx.cv = cv.value;
+    console.info('[OpenCV.js]', checkFunctions(ctx.cv));
+    // Sans flux optique, l'appli reste utilisable : repères mis à jour seulement à chaque inférence.
+    try { ctx.tracker = new OpticalFlowTracker(ctx.cv); } catch (e) { console.warn('[Flux optique] indisponible :', e.message); }
+  } else errors.push(cv.reason.message);
   if (detector.status === 'fulfilled') ctx.detector = detector.value; else errors.push(detector.reason.message);
   if (gfx.status === 'fulfilled') {
     ctx.gfx = gfx.value;
@@ -100,32 +111,53 @@ function stop() {
   ctx.garment?.setVisible(false);
   clearDiagnostic(diagCtx);
   store.landmarks = null;
+  seen = null;
+  lastRaw = null;
+  ctx.tracker?.reset(null, video);
+  torsoFilter.reset();
   setState(AppState.STOPPED);
 }
 
 function loop(now) {
   loopId = requestAnimationFrame(loop);
 
-  // 1. Détection à cadence réduite (Salma). Entre deux inférences : flux optique (tracker.js, S4).
+  // 1. Repères (Salma) : détection MediaPipe à cadence réduite, flux optique entre deux inférences (S4).
+  let raw = null;
+  let reliable = false;
   if (ctx.detector && now - lastInference >= INFERENCE_INTERVAL_MS) {
     lastInference = now;
-    const raw = detectTorso(ctx.detector, video, now);
+    raw = detectTorso(ctx.detector, video, now);
     inferRate.tick(now);
-    const frame = computeFrame(video, true); // true = miroir, comme le CSS de la vidéo
-    if (raw && frame) {
-      const torso = torsoToDisplay(raw, frame);
-      store.landmarks = torso;
-      // Le vêtement n'est placé que si les 4 repères sont fiables ET visibles à l'écran (F02, F08).
-      if (isTorsoReliable(raw) && torso.visible) lastValid = now;
+    reliable = isTorsoReliable(raw);
+    // Chaque détection fiable relance le suivi depuis les vrais repères (pas de dérive du flux optique).
+    if (reliable) ctx.tracker?.reset(raw, video, now);
+  } else if (ctx.tracker) {
+    // Le tracker ne part que d'une détection fiable et s'arrête seul (maxAgeMs, trop de repères rejetés).
+    raw = ctx.tracker.update(video, now);
+    reliable = raw !== null;
+  }
+
+  // 2. Conversion vers l'écran puis lissage (F04). Une même mesure n'est filtrée qu'une fois.
+  const frame = raw && raw !== lastRaw ? computeFrame(video, true) : null; // true = miroir, comme le CSS
+  if (frame) {
+    lastRaw = raw;
+    const torso = torsoToDisplay(raw, frame);
+    // Le vêtement n'est placé que si les 4 repères sont fiables ET visibles à l'écran (F02, F08).
+    if (reliable && torso.visible) {
+      store.landmarks = torsoFilter.update(torso, now);
+      lastValid = now;
+      seen = store.landmarks;
+    } else {
+      seen = torso; // peu fiable : affiché en diagnostic, mais le vêtement reste à la dernière position valide
     }
   }
 
-  // 2. Validité du suivi (F08).
+  // 3. Validité du suivi (F08).
   const valid = store.landmarks && now - lastValid < LOST_DELAY_MS;
   if (valid && store.state !== AppState.TRACKING) setState(AppState.TRACKING);
   if (!valid && store.state === AppState.TRACKING) setState(AppState.LOST);
 
-  // 3. Homographie OpenCV.js (Salma) → maillage (Tasnim).
+  // 4. Homographie OpenCV.js (Salma) → maillage (Tasnim).
   let transform = null;
   if (valid && ctx.cv) {
     const fit = store.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
@@ -135,12 +167,12 @@ function loop(now) {
   if (transform) ctx.garment?.setVertices(transform.vertices);
   ctx.garment?.setVisible(Boolean(valid && transform));
 
-  // 4. Rendu WebGPU (Tasnim).
+  // 5. Rendu WebGPU (Tasnim).
   if (ctx.gfx) { ctx.gfx.render(); renderRate.tick(now); }
 
-  // 5. Diagnostic et métriques (Eya).
+  // 6. Diagnostic et métriques (Eya).
   if (store.diagnostic) {
-    drawDiagnostic(diagCtx, store.landmarks, transform);
+    drawDiagnostic(diagCtx, seen, transform);
     stats.textContent = `rendu : ${renderRate.fps} img/s\ninférence : ${inferRate.fps} /s\nétat : ${store.state}`;
   }
 }
