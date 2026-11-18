@@ -32,6 +32,7 @@ export const store = {
   landmarks: null,
   garmentId: null,
   colorId: null,
+  fit: null,
   adjust: { ...DEFAULT_ADJUST },
   diagnostic: false,
 };

@@ -2,7 +2,7 @@
 // Le squelette démarre même si les modules ne sont pas encore implémentés : l'erreur s'affiche dans le statut.
 import { AppState, DEFAULT_ADJUST } from './contracts.js';
 import { store, setState, onStateChange } from './state.js';
-import { renderState, bindControls, resetControls, loadCatalog } from './ui/ui.js';
+import { renderState, bindControls, resetControls, loadCatalog, buildCatalog } from './ui/ui.js';
 import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.js';
 import { RateCounter } from './metrics/metrics.js';
 import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
@@ -25,6 +25,13 @@ const diagCtx = document.getElementById('diag-canvas').getContext('2d');
 const stats = document.getElementById('stats');
 
 const ctx = { cv: null, detector: null, gfx: null, garment: null, catalog: null };
+
+function selectGarment(g) {
+  store.fit = g.fit;
+  loadGarmentTexture(THREE, g.texture)
+    .then(tex => ctx.garment?.setTexture(tex))
+    .catch(e => console.warn('[Texture] chargement échoué :', e.message));
+}
 const renderRate = new RateCounter();
 const inferRate = new RateCounter();
 let loopId = 0;
@@ -58,11 +65,9 @@ async function boot() {
   } else errors.push(gfx.reason.message);
   if (catalog.status === 'fulfilled') {
     ctx.catalog = catalog.value;
-    // Charge la texture du premier haut dès le boot (Tasnim S3).
     if (ctx.garment && ctx.catalog.garments?.length) {
-      loadGarmentTexture(THREE, ctx.catalog.garments[0].texture)
-        .then(tex => ctx.garment.setTexture(tex))
-        .catch(e => console.warn('[Texture] chargement échoué :', e.message));
+      selectGarment(ctx.catalog.garments[0]);
+      buildCatalog(ctx.catalog.garments, selectGarment);
     }
   } else errors.push(catalog.reason.message);
 
@@ -123,7 +128,7 @@ function loop(now) {
   // 3. Homographie OpenCV.js (Salma) → maillage (Tasnim).
   let transform = null;
   if (valid && ctx.cv) {
-    const fit = ctx.catalog?.garments?.[0]?.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
+    const fit = store.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
     const corners = destinationCorners(store.landmarks, fit, store.adjust);
     transform = computeTransform(ctx.cv, corners, 1024, 1024);
   }
