@@ -75,3 +75,23 @@ test('sleeves : facultatif, 2 points, et seulement avec des ancres', () => {
   assert.equal(warnings.length, 2);
   assert.ok(warnings.every((w) => /sleeves/.test(w)));
 });
+
+test('skeleton : facultatif ; invalide → avertissement, vêtement gardé avec le squelette par défaut', () => {
+  const joints = ['shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'wristL', 'wristR', 'hipL', 'hipR'];
+  const skeleton = Object.fromEntries(joints.map((k, i) => [k, [0.1 + i * 0.1, 0.5]]));
+  const { catalog, warnings } = validateCatalog({
+    garments: [
+      good({ id: 'ok', skeleton, category: 'tshirt' }),
+      good({ id: 'hors-bornes', skeleton: { ...skeleton, wristL: [1.2, 0.5] } }),
+      good({ id: 'incomplet', skeleton: { shoulderL: [0.3, 0.2] } }),
+      good({ id: 'categorie', category: 42 }),
+    ],
+  });
+  assert.deepEqual(catalog.garments.map((g) => g.id), ['ok', 'hors-bornes', 'incomplet']);
+  assert.deepEqual(catalog.garments[0].skeleton, skeleton);
+  assert.equal(catalog.garments[1].skeleton, undefined);
+  assert.equal(catalog.garments[2].skeleton, undefined);
+  assert.equal(warnings.length, 3);
+  assert.match(warnings[0], /skeleton/);
+  assert.match(warnings[2], /category/);
+});

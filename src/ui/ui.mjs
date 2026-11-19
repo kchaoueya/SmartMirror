@@ -148,12 +148,17 @@ export async function loadCatalog(url = '/assets/garments/catalog.json') {
   return catalog;
 }
 
+const SKELETON_JOINTS = ['shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'wristL', 'wristR', 'hipL', 'hipR'];
+const isUnit = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
+const isSkeleton = (s) => s && typeof s === 'object'
+  && SKELETON_JOINTS.every((k) => Array.isArray(s[k]) && s[k].length === 2 && s[k].every(isUnit));
 const isPos = (n) => typeof n === 'number' && Number.isFinite(n) && n > 0;
 const isNonNeg = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
 
 /**
  * Schéma de catalog.json (fonction pure, testée dans tests/catalog.test.mjs) :
  *   { version: number, garments: [{ id, name, texture, size?: [w, h], fit: {ks, kh, dc, db}, anchors?: [[x, y] ×4],
+ *     sleeves?: [[x, y] ×2], category?: string, skeleton?: { shoulderL: [u, v], … 8 articulations },
  *     colors?: [...] }] }
  * @returns {{catalog: {version:number, garments:object[]}, warnings: string[]}}
  * @throws si le catalogue n'a aucun vêtement utilisable
@@ -186,9 +191,17 @@ export function validateCatalog(json) {
       && s.every((p) => Array.isArray(p) && p.length === 2 && p.every(isNonNeg)))) {
       problems.push('sleeves [[manche G], [manche D]] invalide (exige anchors)');
     }
+    if (g?.category !== undefined && (typeof g.category !== 'string' || !g.category)) problems.push('category invalide');
     if (problems.length) { warnings.push(`${where} ignoré : ${problems.join(', ')}`); return; }
     seen.add(g.id);
-    garments.push({ ...g, size, colors: Array.isArray(g.colors) ? g.colors : [] });
+    const garment = { ...g, size, colors: Array.isArray(g.colors) ? g.colors : [] };
+    // skeleton (facultatif, skinning des manches) : 8 articulations [u, v] dans [0, 1]. Invalide : le
+    // vêtement reste utilisable avec le squelette par défaut (avertissement seulement).
+    if (g.skeleton !== undefined && !isSkeleton(g.skeleton)) {
+      warnings.push(`${where} : skeleton invalide (8 articulations [u, v] dans [0, 1]), squelette par défaut utilisé`);
+      delete garment.skeleton;
+    }
+    garments.push(garment);
   });
   if (!garments.length) throw new Error('Catalogue vide : aucun vêtement utilisable');
   return { catalog: { version: json.version ?? 1, garments }, warnings };

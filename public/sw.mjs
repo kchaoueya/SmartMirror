@@ -3,7 +3,7 @@
 // Ce fichier est dans public/ : Vite le copie tel quel à la racine (/sw.mjs), sans le renommer.
 
 // Changer ce numéro à chaque modification de sw.mjs ou du catalogue : l'ancien cache sera supprimé.
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `smartmirror-${CACHE_VERSION}`;
 
 // « Coquille » de l'application : fichiers indispensables, téléchargés dès l'installation.

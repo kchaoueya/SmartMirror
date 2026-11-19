@@ -3,6 +3,7 @@
   "garments": [
     {
       "id": "tshirt-strass",
+      "category": "tshirt",
       "name": "T-shirt strass",
       "texture": "/assets/garments/tshirt-strass.png",
       "size": [682, 1024],
@@ -13,6 +14,7 @@
     },
     {
       "id": "tshirt-raye",
+      "category": "tshirt",
       "name": "T-shirt rayé",
       "texture": "/assets/garments/tshirt-raye.png",
       "size": [600, 900],
@@ -23,6 +25,7 @@
     },
     {
       "id": "pull-gris",
+      "category": "pull",
       "name": "Pull gris",
       "texture": "/assets/garments/pull-gris.png",
       "size": [600, 900],
@@ -33,6 +36,7 @@
     },
     {
       "id": "pull-jaune",
+      "category": "pull",
       "name": "Pull jaune",
       "texture": "/assets/garments/pull-jaune.png",
       "size": [600, 900],
@@ -43,6 +47,7 @@
     },
     {
       "id": "sweat",
+      "category": "pull",
       "name": "Sweat",
       "texture": "/assets/garments/sweat.png",
       "size": [1024, 1024],
