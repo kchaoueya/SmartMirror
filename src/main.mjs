@@ -9,11 +9,12 @@ import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.mjs';
 
 import { startCamera, stopCamera } from './vision/camera.mjs';
 import { loadOpenCV, checkFunctions } from './vision/cv-loader.mjs';
-import { createPoseDetector, detectTorso, torsoReliability } from './vision/pose.mjs';
+import { createPoseDetector, detectTorso, torsoReliability, MIN_VISIBILITY } from './vision/pose.mjs';
 import { OpticalFlowTracker } from './vision/tracker.mjs';
 import { TorsoFilter, EmaFilter } from './vision/filters.mjs';
 import { computeFrame, torsoToDisplay, isVisibleOnScreen } from './vision/coords.mjs';
 import { destinationCorners, computeTransform, estimateHips, torsoRatio, DEFAULT_TORSO_RATIO } from './vision/geometry.mjs';
+import { prepareSkin, skinVertices, armTarget, stepBlend } from './vision/skinning.mjs';
 
 import { createRenderer, THREE } from './render/renderer.mjs';
 import { GarmentMesh } from './render/garment-mesh.mjs';
@@ -42,6 +43,12 @@ const ratioFilter = new EmaFilter(0.1);
 // Haut affiché : fit, taille et ancres ne changent qu'une fois sa texture chargée, pour ne jamais poser
 // l'ancienne texture avec les ancres de la nouvelle.
 let shown = null;
+// Skinning des manches (Salma) : squelette, maillage en pièces et poids du haut affiché (calculés une fois
+// par vêtement) ; mélange courant / visé de chaque bras (0 = manche collée au buste, 1 = suit le bras).
+let skin = null;
+const armBlend = { left: 0, right: 0 };
+const armGoal = { left: 0, right: 0 };
+let skinMs = 0; // durée du skinning, moyenne glissante (mode diagnostic)
 
 function selectGarment(g) {
   loadGarmentTexture(THREE, g.texture)
@@ -49,6 +56,8 @@ function selectGarment(g) {
       ctx.garment?.setTexture(tex);
       shown = g;
       store.fit = g.fit;
+      skin = prepareSkin(g);
+      ctx.garment?.setGeometry(skin.uv, skin.mesh.index, skin.mesh.part);
     })
     .catch(e => console.warn('[Texture] chargement échoué :', e.message));
 }
@@ -72,6 +81,7 @@ function resetTracking() {
   ctx.tracker?.reset(null, video);
   torsoFilter.reset();
   ratioFilter.reset();
+  armBlend.left = armBlend.right = armGoal.left = armGoal.right = 0;
 }
 
 onStateChange((state, _prev, detail) => renderState(state, detail));
@@ -185,6 +195,9 @@ function loop(now) {
       lastValid = now;
       mode = level;
       seen = store.landmarks;
+      // Bras : la manche suit le bras seulement si épaule et coude sont fiables et le coude à l'écran.
+      armGoal.left = armTarget(store.landmarks, 'left', frame, MIN_VISIBILITY);
+      armGoal.right = armTarget(store.landmarks, 'right', frame, MIN_VISIBILITY);
     } else {
       seen = torso; // peu fiable : affiché en diagnostic, mais le vêtement reste à la dernière position valide
     }
@@ -207,7 +220,19 @@ function loop(now) {
     const [texW, texH] = shown?.size ?? [1024, 1024];
     transform = computeTransform(ctx.cv, corners, texW, texH, shown?.anchors);
   }
-  if (transform) ctx.garment?.setVertices(transform.vertices);
+  // 4 bis. Skinning des manches (Salma) : le buste garde l'homographie, les manches suivent les bras.
+  // Le mélange avance d'au plus 0,15 par image : une manche ne saute jamais quand un bras apparaît ou se perd.
+  armBlend.left = stepBlend(armBlend.left, armGoal.left);
+  armBlend.right = stepBlend(armBlend.right, armGoal.right);
+  if (transform && skin) {
+    const t0 = performance.now();
+    const vertices = skinVertices({
+      restVertices: skin.mesh.restVertices, weights: skin.weights, torsoH: transform.homography,
+      skeletonRest: skin.skeletonRest, armsCurrent: store.landmarks, armBlend, out: skin.vertices,
+    });
+    skinMs += 0.05 * (performance.now() - t0 - skinMs);
+    ctx.garment?.setVertices(vertices);
+  } else if (transform) ctx.garment?.setVertices(transform.vertices);
   ctx.garment?.setVisible(Boolean(valid && transform));
 
   // 5. Rendu WebGPU (Tasnim).
@@ -217,7 +242,8 @@ function loop(now) {
   if (store.diagnostic) {
     drawDiagnostic(diagCtx, seen, transform);
     const modeLabel = { full: 'buste complet', shoulders: 'épaules seules', none: '—' }[mode];
-    stats.textContent = `rendu : ${renderRate.fps} img/s\ninférence : ${inferRate.fps} /s\nétat : ${store.state}\nmode : ${modeLabel}`;
+    stats.textContent = `rendu : ${renderRate.fps} img/s\ninférence : ${inferRate.fps} /s\nétat : ${store.state}\nmode : ${modeLabel}`
+      + `\nskinning : ${skinMs.toFixed(3)} ms (bras G ${armBlend.left.toFixed(2)}, D ${armBlend.right.toFixed(2)})`;
   }
 }
 
