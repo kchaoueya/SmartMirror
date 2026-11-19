@@ -36,6 +36,10 @@ export const MIN_VISIBILITY = 0.5;
  * @property {RawPoint} rightShoulder
  * @property {RawPoint} leftHip
  * @property {RawPoint} rightHip
+ * @property {RawPoint} [leftElbow]   bras (skinning des manches) : fournis par detectTorso,
+ * @property {RawPoint} [rightElbow]  absents des mesures du flux optique (tracker.js)
+ * @property {RawPoint} [leftWrist]
+ * @property {RawPoint} [rightWrist]
  * @property {number} timestamp  ms
  */
 
@@ -130,6 +134,12 @@ export function detectTorso(detector, video, timestampMs) {
     rightShoulder: pick(LM.RIGHT_SHOULDER),
     leftHip: pick(LM.LEFT_HIP),
     rightHip: pick(LM.RIGHT_HIP),
+    // Bras : même inférence, aucun coût supplémentaire. La fiabilité du BUSTE (isTorsoReliable,
+    // torsoReliability) reste fondée sur épaules + hanches : un bras caché ne doit pas masquer le vêtement.
+    leftElbow: pick(LM.LEFT_ELBOW),
+    rightElbow: pick(LM.RIGHT_ELBOW),
+    leftWrist: pick(LM.LEFT_WRIST),
+    rightWrist: pick(LM.RIGHT_WRIST),
     timestamp: ts,
   };
   return detector.last;

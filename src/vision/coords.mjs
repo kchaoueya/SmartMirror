@@ -88,7 +88,7 @@ export function torsoToDisplay(raw, frame) {
   const hl = toDisplay(screenLeftHip, frame);
   const hr = toDisplay(screenRightHip, frame);
 
-  return {
+  const out = {
     sl, sr, hl, hr,
     confidence: {
       sl: screenLeftShoulder.visibility,
@@ -96,8 +96,24 @@ export function torsoToDisplay(raw, frame) {
       hl: screenLeftHip.visibility,
       hr: screenRightHip.visibility,
     },
+    // « visible » ne porte que sur le BUSTE : un bras hors cadre ne doit pas masquer le vêtement
+    // (la manche revient alors simplement sur le buste, voir skinning.js).
     visible: [sl, sr, hl, hr].every((p) => isVisibleOnScreen(p, frame)),
     source: raw.source ?? 'detection', // 'optical-flow' quand les repères viennent de tracker.js
     timestamp: raw.timestamp,
   };
+
+  // Bras (détection MediaPipe seulement) : MÊME règle miroir que les épaules, pour que le coude « el »
+  // soit toujours du côté de l'épaule « sl », même bras croisés.
+  if (raw.leftElbow) {
+    const arms = frame.mirror
+      ? { el: raw.leftElbow, er: raw.rightElbow, wl: raw.leftWrist, wr: raw.rightWrist }
+      : { el: raw.rightElbow, er: raw.leftElbow, wl: raw.rightWrist, wr: raw.leftWrist };
+    for (const [k, p] of Object.entries(arms)) {
+      if (!p) continue;
+      out[k] = toDisplay(p, frame);
+      out.confidence[k] = p.visibility;
+    }
+  }
+  return out;
 }
