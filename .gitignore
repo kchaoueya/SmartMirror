@@ -6,3 +6,6 @@ dist/
 recordings/
 *.webm
 *.mp4
+
+# Certificats HTTPS locaux (mkcert) : propres à chaque PC, jamais committés
+certs/
