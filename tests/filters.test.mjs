@@ -1,7 +1,7 @@
 // Tests de filters.js (Salma, S4). Lancer : npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { wrapAngle, EmaFilter, KalmanPoint, TorsoFilter } from '../src/vision/filters.js';
+import { wrapAngle, EmaFilter, KalmanPoint, TorsoFilter } from '../src/vision/filters.mjs';
 
 const close = (a, b, eps, msg) => assert.ok(Math.abs(a - b) <= eps, `${msg ?? ''} ${a} ≠ ${b} (±${eps})`);
 
@@ -103,7 +103,7 @@ const torso = (dx = 0, extra = {}) => ({
 test("TorsoFilter 'none' renvoie les repères bruts", () => {
   const f = new TorsoFilter({ mode: 'none' });
   const lm = torso();
-  assert.equal(f.update(lm, 0), lm);
+  assert.deepEqual(f.update(lm, 0), lm); // copie (les bras gardés peuvent y être ajoutés), mêmes valeurs
 });
 
 test('TorsoFilter garde les autres champs et lisse les 4 points', () => {
@@ -126,4 +126,40 @@ test('TorsoFilter repart de zéro après une longue interruption', () => {
   f.update(torso(0), 0);
   const out = f.update(torso(300), 2000); // personne revenue ailleurs : pas de glissement depuis l'ancienne position
   assert.equal(out.sl.x, 400);
+});
+
+// ─── TorsoFilter : bras ──────────────────────────────────────────────────────
+const withArms = (dx = 0, extra = {}) => torso(0, {
+  el: { x: 60 + dx, y: 180 }, er: { x: 240, y: 180 }, wl: { x: 50, y: 260 }, wr: { x: 250, y: 260 },
+  confidence: { sl: 1, sr: 1, hl: 1, hr: 1, el: 0.9, er: 0.8, wl: 0.7, wr: 0.6 }, ...extra,
+});
+
+test('TorsoFilter lisse aussi les bras (EMA et Kalman) et garde leurs confiances', () => {
+  for (const mode of ['ema', 'kalman']) {
+    const f = new TorsoFilter({ mode, alpha: 0.5 });
+    f.update(withArms(0), 0);
+    const out = f.update(withArms(40), 66);
+    assert.ok(out.el.x > 60 && out.el.x < 100, `${mode} el : ${out.el.x}`);
+    assert.equal(out.confidence.el, 0.9);
+    assert.equal(out.confidence.wr, 0.6);
+  }
+});
+
+test('TorsoFilter : entre deux inférences (flux optique, sans bras), la dernière position des bras est gardée', () => {
+  const f = new TorsoFilter({ mode: 'kalman', maxGapMs: 500 });
+  const a = f.update(withArms(0), 0);
+  const flow = f.update(torso(5, { source: 'optical-flow' }), 33);
+  assert.deepEqual(flow.el, a.el);
+  assert.equal(flow.confidence.el, 0.9);
+  // Plus de mesure des bras depuis maxGapMs : ils disparaissent (la manche reviendra au buste).
+  let late = null;
+  for (let t = 66; t <= 700; t += 33) late = f.update(torso(5, { source: 'optical-flow' }), t);
+  assert.equal(late.el, undefined);
+  assert.equal(late.confidence.el, undefined);
+});
+
+test("TorsoFilter 'none' : bras bruts, gardés entre deux inférences", () => {
+  const f = new TorsoFilter({ mode: 'none' });
+  f.update(withArms(0), 0);
+  assert.deepEqual(f.update(torso(0, { source: 'optical-flow' }), 33).el, { x: 60, y: 180 });
 });

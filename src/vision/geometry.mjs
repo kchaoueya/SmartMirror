@@ -1,6 +1,6 @@
 // Propriétaire : Salma — S3 (F03, F11), S5 (inclinaison, mode dégradé « épaules seules », optimisation)
 // Homographie OpenCV.js : coins de la texture → 4 points de destination sur le buste.
-import { GRID } from '../contracts.js';
+import { GRID } from '../contracts.mjs';
 
 /** Rapport hauteur du buste / largeur des épaules par défaut (mode « épaules seules », avant apprentissage). */
 export const DEFAULT_TORSO_RATIO = 1.3;
@@ -9,7 +9,7 @@ export const DEFAULT_TORSO_RATIO = 1.3;
  * Repère local du buste, aligné sur la ligne des épaules.
  * u : vecteur unitaire épaule gauche → épaule droite (à l'écran) ; n : perpendiculaire, vers le bas.
  * Si la personne penche, u et n tournent avec elle : le vêtement suit l'inclinaison.
- * @param {import('../contracts.js').TorsoLandmarks} lm
+ * @param {import('../contracts.mjs').TorsoLandmarks} lm
  */
 export function torsoAxes(lm) {
   const ex = lm.sr.x - lm.sl.x;
@@ -40,9 +40,9 @@ export function torsoRatio(lm) {
  * On place des hanches estimées sous les épaules, perpendiculairement à leur ligne, à ratio·w.
  * Deux points ne fixent qu'une SIMILITUDE (translation, rotation, échelle uniforme) : c'est exactement
  * ce que donne cette construction. Le reste du pipeline (filtre, homographie, maillage) ne change pas.
- * @param {import('../contracts.js').TorsoLandmarks} lm
+ * @param {import('../contracts.mjs').TorsoLandmarks} lm
  * @param {number} [ratio]  hauteur du buste / largeur des épaules
- * @returns {import('../contracts.js').TorsoLandmarks} copie avec hl, hr estimés (confiance d'origine conservée)
+ * @returns {import('../contracts.mjs').TorsoLandmarks} copie avec hl, hr estimés (confiance d'origine conservée)
  */
 export function estimateHips(lm, ratio = DEFAULT_TORSO_RATIO) {
   const { u, n, w } = torsoAxes(lm);
@@ -61,10 +61,10 @@ export function estimateHips(lm, ratio = DEFAULT_TORSO_RATIO) {
  * h hauteur du buste projetée sur la perpendiculaire. Épaules élargies de ks, bas de kh,
  * haut remonté de dc·h, bas descendu de db·h ; puis réglages manuels (scale, dx·w, dy·h) (F07).
  * Personne droite : u = (1, 0), n = (0, 1) → même rectangle qu'en S3.
- * @param {import('../contracts.js').TorsoLandmarks} lm
- * @param {import('../contracts.js').GarmentFit} fit
- * @param {import('../contracts.js').ManualAdjust} adjust
- * @returns {import('../contracts.js').Point2D[]} [haut-gauche, haut-droit, bas-droit, bas-gauche]
+ * @param {import('../contracts.mjs').TorsoLandmarks} lm
+ * @param {import('../contracts.mjs').GarmentFit} fit
+ * @param {import('../contracts.mjs').ManualAdjust} adjust
+ * @returns {import('../contracts.mjs').Point2D[]} [haut-gauche, haut-droit, bas-droit, bas-gauche]
  */
 export function destinationCorners(lm, fit, adjust) {
   const { u, n, w, S } = torsoAxes(lm);
@@ -109,7 +109,7 @@ function getCache(cv, texW, texH) {
   }
   cache = {
     cv, texW, texH,
-    src: cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, texW, 0, texW, texH, 0, texH]),
+    src: cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, 0, 0, 0, 0, 0, 0]),
     dst: cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, 0, 0, 0, 0, 0, 0]),
     grid: cv.matFromArray(nCols * nRows, 1, cv.CV_32FC2, gridData),
     out: new cv.Mat(),
@@ -122,13 +122,19 @@ function getCache(cv, texW, texH) {
  * Calcule l'homographie (cv.getPerspectiveTransform) et transforme la grille du maillage
  * (cv.perspectiveTransform). Les Mat sont réutilisés ; seule la matrice M est créée puis libérée.
  * @param {any} cv
- * @param {import('../contracts.js').Point2D[]} corners  [haut-gauche, haut-droit, bas-droit, bas-gauche]
+ * @param {import('../contracts.mjs').Point2D[]} corners  [haut-gauche, haut-droit, bas-droit, bas-gauche]
  * @param {number} texW  @param {number} texH
- * @returns {import('../contracts.js').GarmentTransform}
+ * @param {number[][]} [anchors]  points de la TEXTURE posés sur `corners`, en pixels de texture :
+ *   [épaule gauche, épaule droite, ourlet droit, ourlet gauche] (catalog.json, tools/prepare-garment.mjs).
+ *   Absents : les coins de l'image (ancien comportement, marges transparentes comprises). Avec des ancres,
+ *   le reste de l'image (col, manches) est prolongé par la même homographie et déborde autour du buste.
+ * @returns {import('../contracts.mjs').GarmentTransform}
  */
-export function computeTransform(cv, corners, texW, texH) {
+export function computeTransform(cv, corners, texW, texH, anchors = null) {
   const c = getCache(cv, texW, texH);
+  const a = anchors ?? [[0, 0], [texW, 0], [texW, texH], [0, texH]];
   // data32F est relu à chaque accès : la vue reste valide même si la mémoire WebAssembly a grandi.
+  c.src.data32F.set([a[0][0], a[0][1], a[1][0], a[1][1], a[2][0], a[2][1], a[3][0], a[3][1]]);
   c.dst.data32F.set([
     corners[0].x, corners[0].y,
     corners[1].x, corners[1].y,

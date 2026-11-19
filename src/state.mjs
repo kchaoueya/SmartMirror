@@ -1,6 +1,6 @@
 // Propriétaire : Eya — S1
 // État partagé + machine à états. Les autres modules LISENT l'état et appellent setState().
-import { AppState, DEFAULT_ADJUST } from './contracts.js';
+import { AppState, DEFAULT_ADJUST } from './contracts.mjs';
 
 const S = AppState;
 
@@ -28,7 +28,7 @@ export const TRANSITIONS = Object.freeze({
 
 export const store = {
   state: S.LOADING,
-  /** @type {import('./contracts.js').TorsoLandmarks|null} derniers repères valides */
+  /** @type {import('./contracts.mjs').TorsoLandmarks|null} derniers repères valides */
   landmarks: null,
   garmentId: null,
   colorId: null,

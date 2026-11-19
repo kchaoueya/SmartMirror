@@ -8,6 +8,11 @@
 export const LM = Object.freeze({
   LEFT_SHOULDER: 11,
   RIGHT_SHOULDER: 12,
+  // Bras : skinning des manches (skinning.js). N'entrent PAS dans la fiabilité du buste.
+  LEFT_ELBOW: 13,
+  RIGHT_ELBOW: 14,
+  LEFT_WRIST: 15,
+  RIGHT_WRIST: 16,
   LEFT_HIP: 23,
   RIGHT_HIP: 24,
 });
@@ -25,7 +30,12 @@ export const LM = Object.freeze({
  * @property {Point2D} sr  épaule droite (à l'écran)
  * @property {Point2D} hl  hanche gauche
  * @property {Point2D} hr  hanche droite
- * @property {{sl:number, sr:number, hl:number, hr:number}} confidence  visibilité 0..1
+ * @property {Point2D} [el]  coude gauche (à l'écran, même règle miroir que sl) — bras : champs optionnels,
+ * @property {Point2D} [er]  coude droit       absents des mesures du flux optique (tracker.js ne suit
+ * @property {Point2D} [wl]  poignet gauche    que le buste) ; TorsoFilter garde alors la dernière
+ * @property {Point2D} [wr]  poignet droit     position lissée.
+ * @property {{sl:number, sr:number, hl:number, hr:number, el?:number, er?:number, wl?:number, wr?:number}} confidence
+ *   visibilité 0..1
  * @property {'detection'|'optical-flow'} source  d'où vient la position
  * @property {number} timestamp  ms (performance.now())
  */

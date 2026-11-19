@@ -1,23 +1,24 @@
 // Propriétaire : Eya — orchestration. Chaque module appelé ici appartient à son auteur (voir docs/PLANNING.md).
 // Le squelette démarre même si les modules ne sont pas encore implémentés : l'erreur s'affiche dans le statut.
-import { AppState, DEFAULT_ADJUST } from './contracts.js';
-import { store, setState, onStateChange } from './state.js';
-import { renderState, bindControls, resetControls, loadCatalog, buildCatalog } from './ui/ui.js';
-import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.js';
-import { RateCounter } from './metrics/metrics.js';
-import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
+import { AppState, DEFAULT_ADJUST } from './contracts.mjs';
+import { store, setState, onStateChange } from './state.mjs';
+import { renderState, bindControls, resetControls, loadCatalog, buildCatalog } from './ui/ui.mjs';
+import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.mjs';
+import { RateCounter } from './metrics/metrics.mjs';
+import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.mjs';
 
-import { startCamera, stopCamera } from './vision/camera.js';
-import { loadOpenCV, checkFunctions } from './vision/cv-loader.js';
-import { createPoseDetector, detectTorso, torsoReliability } from './vision/pose.js';
-import { OpticalFlowTracker } from './vision/tracker.js';
-import { TorsoFilter, EmaFilter } from './vision/filters.js';
-import { computeFrame, torsoToDisplay, isVisibleOnScreen } from './vision/coords.js';
-import { destinationCorners, computeTransform, estimateHips, torsoRatio, DEFAULT_TORSO_RATIO } from './vision/geometry.js';
+import { startCamera, stopCamera } from './vision/camera.mjs';
+import { loadOpenCV, checkFunctions } from './vision/cv-loader.mjs';
+import { createPoseDetector, detectTorso, torsoReliability, MIN_VISIBILITY } from './vision/pose.mjs';
+import { OpticalFlowTracker } from './vision/tracker.mjs';
+import { TorsoFilter, EmaFilter } from './vision/filters.mjs';
+import { computeFrame, torsoToDisplay, isVisibleOnScreen } from './vision/coords.mjs';
+import { destinationCorners, computeTransform, estimateHips, torsoRatio, DEFAULT_TORSO_RATIO } from './vision/geometry.mjs';
+import { prepareSkin, skinVertices, armTarget, stepBlend } from './vision/skinning.mjs';
 
-import { createRenderer, THREE } from './render/renderer.js';
-import { GarmentMesh } from './render/garment-mesh.js';
-import { loadGarmentTexture } from './render/textures.js';
+import { createRenderer, THREE } from './render/renderer.mjs';
+import { GarmentMesh } from './render/garment-mesh.mjs';
+import { loadGarmentTexture } from './render/textures.mjs';
 
 const INFERENCE_INTERVAL_MS = 66; // ≈ 15 inférences/s, à fixer après les mesures S1
 // Délai avant masquage (F08) : ≈ 7 inférences manquées à 15/s. Plus court, le vêtement clignote au moindre
@@ -39,10 +40,25 @@ const torsoFilter = new TorsoFilter({ mode: 'kalman' });
 // visibles, puis utilisées par le mode dégradé « épaules seules » (Salma, S5).
 const ratioFilter = new EmaFilter(0.1);
 
+// Haut affiché : fit, taille et ancres ne changent qu'une fois sa texture chargée, pour ne jamais poser
+// l'ancienne texture avec les ancres de la nouvelle.
+let shown = null;
+// Skinning des manches (Salma) : squelette, maillage en pièces et poids du haut affiché (calculés une fois
+// par vêtement) ; mélange courant / visé de chaque bras (0 = manche collée au buste, 1 = suit le bras).
+let skin = null;
+const armBlend = { left: 0, right: 0 };
+const armGoal = { left: 0, right: 0 };
+let skinMs = 0; // durée du skinning, moyenne glissante (mode diagnostic)
+
 function selectGarment(g) {
-  store.fit = g.fit;
   loadGarmentTexture(THREE, g.texture)
-    .then(tex => ctx.garment?.setTexture(tex))
+    .then(tex => {
+      ctx.garment?.setTexture(tex);
+      shown = g;
+      store.fit = g.fit;
+      skin = prepareSkin(g);
+      ctx.garment?.setGeometry(skin.uv, skin.mesh.index, skin.mesh.part);
+    })
     .catch(e => console.warn('[Texture] chargement échoué :', e.message));
 }
 const renderRate = new RateCounter();
@@ -65,6 +81,7 @@ function resetTracking() {
   ctx.tracker?.reset(null, video);
   torsoFilter.reset();
   ratioFilter.reset();
+  armBlend.left = armBlend.right = armGoal.left = armGoal.right = 0;
 }
 
 onStateChange((state, _prev, detail) => renderState(state, detail));
@@ -178,6 +195,9 @@ function loop(now) {
       lastValid = now;
       mode = level;
       seen = store.landmarks;
+      // Bras : la manche suit le bras seulement si épaule et coude sont fiables et le coude à l'écran.
+      armGoal.left = armTarget(store.landmarks, 'left', frame, MIN_VISIBILITY);
+      armGoal.right = armTarget(store.landmarks, 'right', frame, MIN_VISIBILITY);
     } else {
       seen = torso; // peu fiable : affiché en diagnostic, mais le vêtement reste à la dernière position valide
     }
@@ -197,9 +217,22 @@ function loop(now) {
   if (valid && ctx.cv) {
     const fit = store.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
     const corners = destinationCorners(store.landmarks, fit, store.adjust);
-    transform = computeTransform(ctx.cv, corners, 1024, 1024);
+    const [texW, texH] = shown?.size ?? [1024, 1024];
+    transform = computeTransform(ctx.cv, corners, texW, texH, shown?.anchors);
   }
-  if (transform) ctx.garment?.setVertices(transform.vertices);
+  // 4 bis. Skinning des manches (Salma) : le buste garde l'homographie, les manches suivent les bras.
+  // Le mélange avance d'au plus 0,15 par image : une manche ne saute jamais quand un bras apparaît ou se perd.
+  armBlend.left = stepBlend(armBlend.left, armGoal.left);
+  armBlend.right = stepBlend(armBlend.right, armGoal.right);
+  if (transform && skin) {
+    const t0 = performance.now();
+    const vertices = skinVertices({
+      restVertices: skin.mesh.restVertices, weights: skin.weights, torsoH: transform.homography,
+      skeletonRest: skin.skeletonRest, armsCurrent: store.landmarks, armBlend, out: skin.vertices,
+    });
+    skinMs += 0.05 * (performance.now() - t0 - skinMs);
+    ctx.garment?.setVertices(vertices);
+  } else if (transform) ctx.garment?.setVertices(transform.vertices);
   ctx.garment?.setVisible(Boolean(valid && transform));
 
   // 5. Rendu WebGPU (Tasnim).
@@ -209,7 +242,8 @@ function loop(now) {
   if (store.diagnostic) {
     drawDiagnostic(diagCtx, seen, transform);
     const modeLabel = { full: 'buste complet', shoulders: 'épaules seules', none: '—' }[mode];
-    stats.textContent = `rendu : ${renderRate.fps} img/s\ninférence : ${inferRate.fps} /s\nétat : ${store.state}\nmode : ${modeLabel}`;
+    stats.textContent = `rendu : ${renderRate.fps} img/s\ninférence : ${inferRate.fps} /s\nétat : ${store.state}\nmode : ${modeLabel}`
+      + `\nskinning : ${skinMs.toFixed(3)} ms (bras G ${armBlend.left.toFixed(2)}, D ${armBlend.right.toFixed(2)})`;
   }
 }
 

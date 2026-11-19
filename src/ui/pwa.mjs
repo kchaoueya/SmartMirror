@@ -1,7 +1,7 @@
 // Propriétaire : Eya — volet PWA : enregistrement du Service Worker et badge « Hors ligne ».
 
 /**
- * Enregistre public/sw.js.
+ * Enregistre public/sw.mjs.
  * Uniquement en production (npm run build + npm run preview) : en développement, le cache
  * empêcherait de voir les modifications du code (Vite recharge les fichiers à chaque sauvegarde).
  */
@@ -17,7 +17,7 @@ export function registerServiceWorker() {
   // Après le chargement de la page, pour ne pas ralentir le démarrage.
   window.addEventListener('load', async () => {
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js');
+      const reg = await navigator.serviceWorker.register('/sw.mjs');
       console.info('[PWA] Service Worker enregistré, portée :', reg.scope);
     } catch (e) {
       console.error('[PWA] Échec de l\'enregistrement du Service Worker :', e);

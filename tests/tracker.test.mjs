@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { filterTracks, OpticalFlowTracker } from '../src/vision/tracker.js';
+import { filterTracks, OpticalFlowTracker } from '../src/vision/tracker.mjs';
 
 const close = (a, b, eps, msg) => assert.ok(Math.abs(a - b) <= eps, `${msg ?? ''} ${a} ≠ ${b} (±${eps})`);
 

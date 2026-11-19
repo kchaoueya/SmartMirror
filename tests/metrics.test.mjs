@@ -1,7 +1,7 @@
 // Tests de metrics.js (S4 : dispersion normalisée, enregistrement). Lancer : npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizedDispersion, torsoSample, LandmarkRecorder } from '../src/metrics/metrics.js';
+import { normalizedDispersion, torsoSample, LandmarkRecorder } from '../src/metrics/metrics.mjs';
 
 const close = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} ≠ ${b}`);
 

@@ -135,10 +135,16 @@ export class KalmanPoint {
 }
 
 const POINTS = ['sl', 'sr', 'hl', 'hr'];
+const ARM_POINTS = ['el', 'er', 'wl', 'wr'];
 
 /**
- * Lisse les 4 repères d'un TorsoLandmarks (contracts.js).
+ * Lisse les 4 repères d'un TorsoLandmarks (contracts.js), et ses 4 repères de bras quand il en a.
  * mode 'none' (brut), 'ema' ou 'kalman' : permet la comparaison brut / lissé demandée par F04.
+ *
+ * Bras : mesurés seulement par MediaPipe (≈ 15 /s), le buste l'est aussi par le flux optique (≈ 30 /s).
+ * Chaque point de bras a donc son PROPRE temps de dernière mesure (dt du Kalman). Entre deux inférences,
+ * la dernière position lissée est reprise telle quelle (pas d'extrapolation : un bras qui accélère ferait
+ * dépasser la manche). Sans mesure depuis maxGapMs, le point disparaît et la manche revient au buste.
  */
 export class TorsoFilter {
   /**
@@ -157,28 +163,57 @@ export class TorsoFilter {
     this.maxGapMs = maxGapMs;
     this.ema = Object.fromEntries(POINTS.map((k) => [k, { x: new EmaFilter(alpha), y: new EmaFilter(alpha) }]));
     this.kalman = Object.fromEntries(POINTS.map((k) => [k, new KalmanPoint({ processNoise, measurementNoise })]));
+    this.armEma = Object.fromEntries(ARM_POINTS.map((k) => [k, { x: new EmaFilter(alpha), y: new EmaFilter(alpha) }]));
+    this.armKalman = Object.fromEntries(ARM_POINTS.map((k) => [k, new KalmanPoint({ processNoise, measurementNoise })]));
+    /** Dernière sortie de chaque point de bras : position lissée, confiance, instant de la mesure. */
+    this.arm = Object.fromEntries(ARM_POINTS.map((k) => [k, null]));
     this.lastTime = null;
   }
 
   /**
-   * @param {import('../contracts.js').TorsoLandmarks} lm  repères bruts (pixels d'affichage)
+   * @param {import('../contracts.mjs').TorsoLandmarks} lm  repères bruts (pixels d'affichage)
    * @param {number} now  ms (performance.now())
-   * @returns {import('../contracts.js').TorsoLandmarks} repères lissés (mêmes autres champs)
+   * @returns {import('../contracts.mjs').TorsoLandmarks} repères lissés (mêmes autres champs)
    */
   update(lm, now) {
     const dt = this.lastTime === null ? 0 : now - this.lastTime;
     if (dt > this.maxGapMs || dt < 0) this.reset();
     this.lastTime = now;
-    if (this.mode === 'none') return lm;
 
-    const out = { ...lm };
-    const r = lm.source === 'optical-flow' ? this.measurementNoise * this.flowNoiseFactor : this.measurementNoise;
-    for (const k of POINTS) {
-      const p = lm[k];
-      if (this.mode === 'ema') out[k] = { x: this.ema[k].x.update(p.x), y: this.ema[k].y.update(p.y) };
-      else out[k] = this.kalman[k].update(p.x, p.y, dt, r);
+    const out = { ...lm, confidence: { ...lm.confidence } };
+    if (this.mode !== 'none') {
+      const r = lm.source === 'optical-flow' ? this.measurementNoise * this.flowNoiseFactor : this.measurementNoise;
+      for (const k of POINTS) {
+        const p = lm[k];
+        if (this.mode === 'ema') out[k] = { x: this.ema[k].x.update(p.x), y: this.ema[k].y.update(p.y) };
+        else out[k] = this.kalman[k].update(p.x, p.y, dt, r);
+      }
     }
+    this.updateArms(lm, out, now);
     return out;
+  }
+
+  /** Bras : lisse les points mesurés, reprend les autres tant qu'ils ont moins de maxGapMs. */
+  updateArms(lm, out, now) {
+    for (const k of ARM_POINTS) {
+      const p = lm[k];
+      let s = this.arm[k];
+      if (s && now - s.t > this.maxGapMs) { this.resetArm(k); s = null; }
+      if (p) {
+        const dt = s ? now - s.t : 0;
+        let q = p;
+        if (this.mode === 'ema') q = { x: this.armEma[k].x.update(p.x), y: this.armEma[k].y.update(p.y) };
+        else if (this.mode === 'kalman') q = this.armKalman[k].update(p.x, p.y, dt, this.measurementNoise);
+        s = this.arm[k] = { p: q, c: lm.confidence?.[k] ?? 0, t: now };
+      }
+      if (s) { out[k] = s.p; out.confidence[k] = s.c; }
+      else { delete out[k]; delete out.confidence[k]; }
+    }
+  }
+
+  resetArm(k) {
+    this.armEma[k].x.reset(); this.armEma[k].y.reset(); this.armKalman[k].reset();
+    this.arm[k] = null;
   }
 
   /** Change de filtre (réglage diagnostic) : on repart de zéro pour ne pas mélanger les états. */
@@ -186,6 +221,7 @@ export class TorsoFilter {
 
   reset() {
     for (const k of POINTS) { this.ema[k].x.reset(); this.ema[k].y.reset(); this.kalman[k].reset(); }
+    for (const k of ARM_POINTS) this.resetArm(k);
     this.lastTime = null;
   }
 }

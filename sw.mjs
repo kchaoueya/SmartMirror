@@ -1,8 +1,8 @@
 // Propriétaire : Eya — Service Worker (volet PWA)
 // Rôle : garder une copie de l'application dans le cache pour qu'elle se lance sans connexion.
-// Ce fichier est dans public/ : Vite le copie tel quel à la racine (/sw.js), sans le renommer.
+// Ce fichier est dans public/ : Vite le copie tel quel à la racine (/sw.mjs), sans le renommer.
 
-// Changer ce numéro à chaque modification de sw.js ou du catalogue : l'ancien cache sera supprimé.
+// Changer ce numéro à chaque modification de sw.mjs ou du catalogue : l'ancien cache sera supprimé.
 const CACHE_VERSION = 'v1';
 const CACHE_NAME = `smartmirror-${CACHE_VERSION}`;
 

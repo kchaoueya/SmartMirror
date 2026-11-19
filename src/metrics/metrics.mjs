@@ -12,7 +12,7 @@ export class RateCounter {
 
 /**
  * Résumé d'un buste pour les mesures : centre des 4 repères et largeur des épaules (px d'affichage).
- * @param {import('../contracts.js').TorsoLandmarks|null} lm
+ * @param {import('../contracts.mjs').TorsoLandmarks|null} lm
  * @returns {{cx:number, cy:number, w:number}|null}
  */
 export function torsoSample(lm) {

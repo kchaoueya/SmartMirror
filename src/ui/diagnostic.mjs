@@ -1,6 +1,6 @@
 // Propriétaire : Eya — S2
 // Mode diagnostic : surcouche 2D des repères, de leur confiance et des coins du vêtement.
-import { MIN_VISIBILITY } from '../vision/pose.js';
+import { MIN_VISIBILITY } from '../vision/pose.mjs';
 
 const OK = '#4ade80';      // repère fiable (détection MediaPipe)
 const BAD = '#f87171';     // repère sous le seuil de confiance
@@ -20,8 +20,8 @@ function fitCanvas(ctx) {
 
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {import('../contracts.js').TorsoLandmarks|null} landmarks
- * @param {import('../contracts.js').GarmentTransform|null} transform
+ * @param {import('../contracts.mjs').TorsoLandmarks|null} landmarks
+ * @param {import('../contracts.mjs').GarmentTransform|null} transform
  * @param {number} [minVisibility]
  */
 export function drawDiagnostic(ctx, landmarks, transform, minVisibility = MIN_VISIBILITY) {
@@ -45,8 +45,26 @@ export function drawDiagnostic(ctx, landmarks, transform, minVisibility = MIN_VI
     ctx.setLineDash([]);
   }
 
-  // Les 4 repères avec leur nom et leur confiance.
+  // Os des bras (skinning des manches) : épaule → coude → poignet, couleur selon la confiance de chaque
+  // segment (le plus faible de ses deux bouts). Absents tant que MediaPipe n'a pas vu le bras.
   ctx.font = '13px system-ui';
+  for (const [s, e, w] of [['sl', 'el', 'wl'], ['sr', 'er', 'wr']]) {
+    if (!landmarks[e]) continue;
+    const c = landmarks.confidence;
+    bone(ctx, landmarks[s], landmarks[e], Math.min(c[s], c[e]) >= minVisibility ? OK : BAD);
+    if (landmarks[w]) bone(ctx, landmarks[e], landmarks[w], Math.min(c[e], c[w]) >= minVisibility ? OK : BAD);
+    for (const k of [e, w]) {
+      const p = landmarks[k];
+      if (!p) continue;
+      ctx.fillStyle = c[k] >= minVisibility ? OK : BAD;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText(`${k} ${c[k].toFixed(2)}`, p.x + 8, p.y - 8);
+    }
+  }
+
+  // Les 4 repères avec leur nom et leur confiance.
   for (const k of keys) {
     const p = landmarks[k];
     const v = landmarks.confidence[k];
@@ -56,6 +74,15 @@ export function drawDiagnostic(ctx, landmarks, transform, minVisibility = MIN_VI
     ctx.fill();
     ctx.fillText(`${k} ${v.toFixed(2)}`, p.x + 10, p.y - 10);
   }
+}
+
+function bone(ctx, a, b, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
 }
 
 function polygon(ctx, pts) {

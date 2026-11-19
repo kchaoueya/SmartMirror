@@ -137,7 +137,7 @@ export class OpticalFlowTracker {
 
   /**
    * À appeler à chaque détection MediaPipe : repart des repères détectés (évite la dérive).
-   * @param {import('./pose.js').RawTorso|null} raw
+   * @param {import('./pose.mjs').RawTorso|null} raw
    * @param {HTMLVideoElement} video
    * @param {number} [now]
    */
@@ -158,7 +158,7 @@ export class OpticalFlowTracker {
    * Entre deux détections : déplace les repères selon le flux optique.
    * @param {HTMLVideoElement} video
    * @param {number} [now]
-   * @returns {(import('./pose.js').RawTorso & {source:'optical-flow', tracked:boolean[]})|null}
+   * @returns {(import('./pose.mjs').RawTorso & {source:'optical-flow', tracked:boolean[]})|null}
    *          null = rien à proposer (pas de détection récente, ou suivi abandonné)
    */
   update(video, now = performance.now()) {

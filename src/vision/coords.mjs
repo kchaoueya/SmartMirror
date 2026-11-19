@@ -74,9 +74,9 @@ export function isVisibleOnScreen(p, frame, margin = 0) {
  * On choisit donc le côté selon le réglage miroir, et pas selon la position x
  * (qui s'inverserait si la personne se tourne).
  *
- * @param {import('./pose.js').RawTorso} raw
+ * @param {import('./pose.mjs').RawTorso} raw
  * @param {ReturnType<typeof frameFromSizes>} frame
- * @returns {import('../contracts.js').TorsoLandmarks & {visible: boolean}}
+ * @returns {import('../contracts.mjs').TorsoLandmarks & {visible: boolean}}
  */
 export function torsoToDisplay(raw, frame) {
   const [screenLeftShoulder, screenRightShoulder, screenLeftHip, screenRightHip] = frame.mirror
@@ -88,7 +88,7 @@ export function torsoToDisplay(raw, frame) {
   const hl = toDisplay(screenLeftHip, frame);
   const hr = toDisplay(screenRightHip, frame);
 
-  return {
+  const out = {
     sl, sr, hl, hr,
     confidence: {
       sl: screenLeftShoulder.visibility,
@@ -96,8 +96,24 @@ export function torsoToDisplay(raw, frame) {
       hl: screenLeftHip.visibility,
       hr: screenRightHip.visibility,
     },
+    // « visible » ne porte que sur le BUSTE : un bras hors cadre ne doit pas masquer le vêtement
+    // (la manche revient alors simplement sur le buste, voir skinning.js).
     visible: [sl, sr, hl, hr].every((p) => isVisibleOnScreen(p, frame)),
     source: raw.source ?? 'detection', // 'optical-flow' quand les repères viennent de tracker.js
     timestamp: raw.timestamp,
   };
+
+  // Bras (détection MediaPipe seulement) : MÊME règle miroir que les épaules, pour que le coude « el »
+  // soit toujours du côté de l'épaule « sl », même bras croisés.
+  if (raw.leftElbow) {
+    const arms = frame.mirror
+      ? { el: raw.leftElbow, er: raw.rightElbow, wl: raw.leftWrist, wr: raw.rightWrist }
+      : { el: raw.rightElbow, er: raw.leftElbow, wl: raw.rightWrist, wr: raw.leftWrist };
+    for (const [k, p] of Object.entries(arms)) {
+      if (!p) continue;
+      out[k] = toDisplay(p, frame);
+      out.confidence[k] = p.visibility;
+    }
+  }
+  return out;
 }
