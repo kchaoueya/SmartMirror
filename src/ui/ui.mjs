@@ -1,5 +1,5 @@
 // Propriétaire : Eya — S1 (boutons, états), S3 (catalogue), S4 (réglages), S5 (couleurs, erreurs)
-import { AppState } from '../contracts.js';
+import { AppState } from '../contracts.mjs';
 
 const $ = (id) => document.getElementById(id);
 
@@ -93,7 +93,7 @@ export function resetControls(adjust) {
 // Réglages retenus entre deux visites (confort : le stockage peut être indisponible, on ignore alors l'erreur).
 const ADJUST_KEY = 'smartmirror.adjust';
 
-/** @returns {import('../contracts.js').ManualAdjust|null} réglages de la dernière visite, s'ils sont valides */
+/** @returns {import('../contracts.mjs').ManualAdjust|null} réglages de la dernière visite, s'ils sont valides */
 export function loadSavedAdjust() {
   try {
     const a = JSON.parse(localStorage.getItem(ADJUST_KEY));
@@ -153,7 +153,8 @@ const isNonNeg = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
 
 /**
  * Schéma de catalog.json (fonction pure, testée dans tests/catalog.test.mjs) :
- *   { version: number, garments: [{ id, name, texture, size?: [w, h], fit: {ks, kh, dc, db}, colors?: [...] }] }
+ *   { version: number, garments: [{ id, name, texture, size?: [w, h], fit: {ks, kh, dc, db}, anchors?: [[x, y] ×4],
+ *     colors?: [...] }] }
  * @returns {{catalog: {version:number, garments:object[]}, warnings: string[]}}
  * @throws si le catalogue n'a aucun vêtement utilisable
  */
@@ -173,6 +174,18 @@ export function validateCatalog(json) {
     if (!f || !isPos(f.ks) || !isPos(f.kh) || !isNonNeg(f.dc) || !isNonNeg(f.db)) problems.push('fit {ks, kh, dc, db} invalide');
     const size = g?.size ?? [1024, 1024];
     if (!Array.isArray(size) || size.length !== 2 || !size.every(isPos)) problems.push('size [largeur, hauteur] invalide');
+    // anchors (facultatif) : 4 points [x, y] dans la texture, épaules puis ourlet (tools/prepare-garment.mjs).
+    const a = g?.anchors;
+    if (a !== undefined && !(Array.isArray(a) && a.length === 4 && a.every((p) => Array.isArray(p) && p.length === 2
+      && p.every(isNonNeg)) && a[1][0] > a[0][0] && a[2][0] > a[3][0] && a[3][1] > a[0][1])) {
+      problems.push('anchors [[épaule G], [épaule D], [ourlet D], [ourlet G]] invalide');
+    }
+    // sleeves (facultatif, exige anchors) : centre de chaque manche [x, y] → manches articulées.
+    const s = g?.sleeves;
+    if (s !== undefined && !(a !== undefined && Array.isArray(s) && s.length === 2
+      && s.every((p) => Array.isArray(p) && p.length === 2 && p.every(isNonNeg)))) {
+      problems.push('sleeves [[manche G], [manche D]] invalide (exige anchors)');
+    }
     if (problems.length) { warnings.push(`${where} ignoré : ${problems.join(', ')}`); return; }
     seen.add(g.id);
     garments.push({ ...g, size, colors: Array.isArray(g.colors) ? g.colors : [] });

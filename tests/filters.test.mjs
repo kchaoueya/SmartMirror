@@ -1,7 +1,7 @@
 // Tests de filters.js (Salma, S4). Lancer : npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { wrapAngle, EmaFilter, KalmanPoint, TorsoFilter } from '../src/vision/filters.js';
+import { wrapAngle, EmaFilter, KalmanPoint, TorsoFilter } from '../src/vision/filters.mjs';
 
 const close = (a, b, eps, msg) => assert.ok(Math.abs(a - b) <= eps, `${msg ?? ''} ${a} ≠ ${b} (±${eps})`);
 

@@ -25,7 +25,14 @@
     *   **Source originale :** Image placeholder générée par `scripts/generate-placeholders.mjs` (même commit).
     *   **Auteur / Créateur :** Tasnim Selmi — SmartMirror AR, SUP'COM 2026/2027
     *   **Licence :** Propriété de l'équipe SmartMirror AR — usage académique exclusif
-    *   **Modifications apportées :** Mêmes traitements que tshirt.png
+    *   **Modifications apportées :** Mêmes traitements que tshirt.png. Remplacée ensuite par une photo réelle (commit `91b3126`) ; fond noir opaque détouré, trous du détourage bouchés et ancres mesurées par `tools/prepare-garment.mjs --taches`.
+
+> `tshirt.png` et `chemise.png` ne sont plus utilisés par le catalogue (remplacés par les photos ci-dessous).
+
+*   **Assets :** `public/assets/garments/tshirt-strass.png`, `tshirt-raye.png`, `pull-gris.png`, `pull-jaune.png` — photos de produits réels
+    *   **Source originale :** Photos fournies par Eya Kchaou, originaux conservés dans `assets-src/garments/*.jpg`. **À compléter : site d'origine et licence de chaque photo.**
+    *   **Licence :** À compléter (usage académique uniquement tant que la licence n'est pas vérifiée)
+    *   **Modifications apportées :** Conversion PNG RGBA (réduction à 1024 px, ou agrandissement bicubique ×3 pour les vignettes 200×300) ; fond blanc détouré, contour rogné et recoloré, ancres épaules / ourlet mesurées avec `tools/prepare-garment.mjs --fond=blanc` (ancres du pull jaune placées à la main).
 
 > Les textures sont chargées et appliquées sur un maillage WebGPU via `src/render/textures.js` (loadGarmentTexture) et `src/render/garment-mesh.js` (setTexture).
 
@@ -93,6 +100,15 @@
         > puis : « oui » (confirmation du refactor proposé)
     *   **Usage principal :** Identification que `immersive-ar` + polyfill CDN est inadapté à une application miroir sur écran PC ; proposition et implémentation du remplacement par une session WebXR `inline` native (suppression du polyfill dans `index.html`, réécriture de `startXRSession()` dans `renderer.js`, mise à jour du commentaire dans `main.js`).
     *   **Axe de vérification appliqué :** Lecture de la documentation WebXR Device API (MDN) pour confirmer que `inline` est le type de session correct pour une AR dans la page sans casque ; vérification que `setAnimationLoop` de Three.js reçoit toujours le `XRFrame` avec une session `inline` ; test que l'application démarre sans erreur `navigator.xr` sur Chrome (aucun polyfill requis).
+
+*   **Composant :** [`tools/prepare-garment.mjs`](tools/prepare-garment.mjs), ancres du catalogue (`computeTransform` dans [`src/vision/geometry.mjs`](src/vision/geometry.mjs)), correctif de taille du canvas dans [`src/render/renderer.mjs`](src/render/renderer.mjs)
+    *   **Responsable :** Eya Kchaou
+    *   **Modèle IA :** Claude Opus 5.5 (`claude-opus-5-5`) — Anthropic, novembre 2026
+    *   **Prompt exact :**
+        > « les vetements sont irrealistes et tres mal visible il fautt quil soit plus adaptée avec le corps »
+        > puis : « ceci est le rendu et voici des vetements reels , je veux un rendu meilleur » (captures du rendu + photos)
+    *   **Usage principal :** Diagnostic (fond noir opaque de `sweat.png`, image entière étirée sur les épaules, canvas de rendu figé par `setSize` qui coupait le bas du vêtement) ; outil de détourage et de détection des ancres ; placement par ancres (épaules et ourlet du vêtement posés sur les repères) ; intégration des photos réelles.
+    *   **Axe de vérification appliqué :** Tests unitaires (ancres dans `computeTransform` avec OpenCV.js, validation du catalogue) ; aperçus hors ligne du vêtement posé sur une silhouette avec la même géométrie que l'application ; essai devant la caméra.
 
 *   **Composant :** [`ATTRIBUTION.md`](ATTRIBUTION.md) — ce fichier
     *   **Responsable :** Tasnim Selmi

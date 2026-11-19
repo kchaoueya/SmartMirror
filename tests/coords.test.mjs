@@ -1,7 +1,7 @@
 // Tests de coords.js (Salma, S2). Lancer : npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { frameFromSizes, toDisplay, toNormalized, torsoToDisplay, isVisibleOnScreen } from '../src/vision/coords.js';
+import { frameFromSizes, toDisplay, toNormalized, torsoToDisplay, isVisibleOnScreen } from '../src/vision/coords.mjs';
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≠ ${b}`);
 

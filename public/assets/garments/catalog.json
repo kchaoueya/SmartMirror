@@ -1,33 +1,55 @@
 {
-  "version": 1,
+  "version": 2,
   "garments": [
     {
-      "id": "tshirt",
-      "name": "T-shirt",
-      "texture": "/assets/garments/tshirt.png",
-      "size": [1024, 1024],
-      "fit": { "ks": 1.35, "kh": 1.25, "dc": 0.12, "db": 0.10 },
-      "colors": [
-        { "id": "blanc", "label": "Blanc", "hue": 0, "saturation": 0 },
-        { "id": "bleu", "label": "Bleu", "hue": 215, "saturation": 0.6 },
-        { "id": "rouge", "label": "Rouge", "hue": 355, "saturation": 0.7 }
-      ]
+      "id": "tshirt-strass",
+      "name": "T-shirt strass",
+      "texture": "/assets/garments/tshirt-strass.png",
+      "size": [682, 1024],
+      "anchors": [[193, 326], [488, 326], [488, 770], [193, 770]],
+      "fit": { "ks": 1.3, "kh": 1.3, "dc": 0.08, "db": 0.1 },
+      "colors": [],
+      "sleeves": [[144, 485], [537, 485]]
     },
     {
-      "id": "chemise",
-      "name": "Chemise",
-      "texture": "/assets/garments/chemise.png",
-      "size": [1024, 1024],
-      "fit": { "ks": 1.30, "kh": 1.20, "dc": 0.10, "db": 0.15 },
-      "colors": []
+      "id": "tshirt-raye",
+      "name": "T-shirt rayé",
+      "texture": "/assets/garments/tshirt-raye.png",
+      "size": [600, 900],
+      "anchors": [[171, 298], [427, 298], [431, 630], [171, 630]],
+      "fit": { "ks": 1.27, "kh": 1.27, "dc": 0.1, "db": 0.06 },
+      "colors": [],
+      "sleeves": [[131, 447], [468, 448]]
+    },
+    {
+      "id": "pull-gris",
+      "name": "Pull gris",
+      "texture": "/assets/garments/pull-gris.png",
+      "size": [600, 900],
+      "anchors": [[188, 258], [409, 258], [409, 605], [188, 605]],
+      "fit": { "ks": 1.32, "kh": 1.32, "dc": 0.1, "db": 0.08 },
+      "colors": [],
+      "sleeves": [[145, 535], [453, 531]]
+    },
+    {
+      "id": "pull-jaune",
+      "name": "Pull jaune",
+      "texture": "/assets/garments/pull-jaune.png",
+      "size": [600, 900],
+      "anchors": [[165, 285], [440, 285], [440, 625], [165, 625]],
+      "fit": { "ks": 1.45, "kh": 1.45, "dc": 0.13, "db": 0.1 },
+      "colors": [],
+      "sleeves": [[121, 558], [481, 564]]
     },
     {
       "id": "sweat",
       "name": "Sweat",
       "texture": "/assets/garments/sweat.png",
       "size": [1024, 1024],
-      "fit": { "ks": 1.45, "kh": 1.30, "dc": 0.14, "db": 0.12 },
-      "colors": []
+      "anchors": [[282, 277], [763, 277], [720, 812], [323, 812]],
+      "fit": { "ks": 1.28, "kh": 1.02, "dc": 0.1, "db": 0.06 },
+      "colors": [],
+      "sleeves": [[180, 632], [856, 651]]
     }
   ]
 }

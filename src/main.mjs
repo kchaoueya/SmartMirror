@@ -1,23 +1,23 @@
 // Propriétaire : Eya — orchestration. Chaque module appelé ici appartient à son auteur (voir docs/PLANNING.md).
 // Le squelette démarre même si les modules ne sont pas encore implémentés : l'erreur s'affiche dans le statut.
-import { AppState, DEFAULT_ADJUST } from './contracts.js';
-import { store, setState, onStateChange } from './state.js';
-import { renderState, bindControls, resetControls, loadCatalog, buildCatalog } from './ui/ui.js';
-import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.js';
-import { RateCounter } from './metrics/metrics.js';
-import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
+import { AppState, DEFAULT_ADJUST } from './contracts.mjs';
+import { store, setState, onStateChange } from './state.mjs';
+import { renderState, bindControls, resetControls, loadCatalog, buildCatalog } from './ui/ui.mjs';
+import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.mjs';
+import { RateCounter } from './metrics/metrics.mjs';
+import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.mjs';
 
-import { startCamera, stopCamera } from './vision/camera.js';
-import { loadOpenCV, checkFunctions } from './vision/cv-loader.js';
-import { createPoseDetector, detectTorso, torsoReliability } from './vision/pose.js';
-import { OpticalFlowTracker } from './vision/tracker.js';
-import { TorsoFilter, EmaFilter } from './vision/filters.js';
-import { computeFrame, torsoToDisplay, isVisibleOnScreen } from './vision/coords.js';
-import { destinationCorners, computeTransform, estimateHips, torsoRatio, DEFAULT_TORSO_RATIO } from './vision/geometry.js';
+import { startCamera, stopCamera } from './vision/camera.mjs';
+import { loadOpenCV, checkFunctions } from './vision/cv-loader.mjs';
+import { createPoseDetector, detectTorso, torsoReliability } from './vision/pose.mjs';
+import { OpticalFlowTracker } from './vision/tracker.mjs';
+import { TorsoFilter, EmaFilter } from './vision/filters.mjs';
+import { computeFrame, torsoToDisplay, isVisibleOnScreen } from './vision/coords.mjs';
+import { destinationCorners, computeTransform, estimateHips, torsoRatio, DEFAULT_TORSO_RATIO } from './vision/geometry.mjs';
 
-import { createRenderer, THREE } from './render/renderer.js';
-import { GarmentMesh } from './render/garment-mesh.js';
-import { loadGarmentTexture } from './render/textures.js';
+import { createRenderer, THREE } from './render/renderer.mjs';
+import { GarmentMesh } from './render/garment-mesh.mjs';
+import { loadGarmentTexture } from './render/textures.mjs';
 
 const INFERENCE_INTERVAL_MS = 66; // ≈ 15 inférences/s, à fixer après les mesures S1
 // Délai avant masquage (F08) : ≈ 7 inférences manquées à 15/s. Plus court, le vêtement clignote au moindre
@@ -39,10 +39,17 @@ const torsoFilter = new TorsoFilter({ mode: 'kalman' });
 // visibles, puis utilisées par le mode dégradé « épaules seules » (Salma, S5).
 const ratioFilter = new EmaFilter(0.1);
 
+// Haut affiché : fit, taille et ancres ne changent qu'une fois sa texture chargée, pour ne jamais poser
+// l'ancienne texture avec les ancres de la nouvelle.
+let shown = null;
+
 function selectGarment(g) {
-  store.fit = g.fit;
   loadGarmentTexture(THREE, g.texture)
-    .then(tex => ctx.garment?.setTexture(tex))
+    .then(tex => {
+      ctx.garment?.setTexture(tex);
+      shown = g;
+      store.fit = g.fit;
+    })
     .catch(e => console.warn('[Texture] chargement échoué :', e.message));
 }
 const renderRate = new RateCounter();
@@ -197,7 +204,8 @@ function loop(now) {
   if (valid && ctx.cv) {
     const fit = store.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
     const corners = destinationCorners(store.landmarks, fit, store.adjust);
-    transform = computeTransform(ctx.cv, corners, 1024, 1024);
+    const [texW, texH] = shown?.size ?? [1024, 1024];
+    transform = computeTransform(ctx.cv, corners, texW, texH, shown?.anchors);
   }
   if (transform) ctx.garment?.setVertices(transform.vertices);
   ctx.garment?.setVisible(Boolean(valid && transform));

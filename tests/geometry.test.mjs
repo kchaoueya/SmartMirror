@@ -7,7 +7,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   destinationCorners, computeTransform, disposeTransform, estimateHips, torsoRatio, torsoAxes, DEFAULT_TORSO_RATIO,
-} from '../src/vision/geometry.js';
+} from '../src/vision/geometry.mjs';
 
 const close = (a, b, eps, msg) => assert.ok(Math.abs(a - b) <= eps, `${msg ?? ''} ${a} ≠ ${b} (±${eps})`);
 const closePt = (p, q, eps = 1e-6, msg = '') => { close(p.x, q.x, eps, `${msg} x`); close(p.y, q.y, eps, `${msg} y`); };
@@ -113,5 +113,24 @@ test('computeTransform : les coins de la grille tombent sur les coins de destina
     closePt(v(0, t.rows), corners[3], 1e-2, 'bas-gauche');
     assert.equal(t.homography.length, 9);
   }
+  disposeTransform();
+});
+
+test('computeTransform avec ancres : ce sont les ancres (et non les coins de l\'image) qui tombent sur les coins', () => {
+  // Texture 800×1000, grille 8×10 : un nœud tous les 100 px ; ancres sur les nœuds (2,2) (6,2) (6,8) (2,8).
+  const anchors = [[200, 200], [600, 200], [600, 800], [200, 800]];
+  const corners = destinationCorners(rotate(upright, 0.2), FIT, NEUTRAL);
+  const t = computeTransform(cv, corners, 800, 1000, anchors);
+  const v = (c, r) => {
+    const i = (r * (t.cols + 1) + c) * 2;
+    return { x: t.vertices[i], y: t.vertices[i + 1] };
+  };
+  closePt(v(2, 2), corners[0], 1e-2, 'épaule gauche');
+  closePt(v(6, 2), corners[1], 1e-2, 'épaule droite');
+  closePt(v(6, 8), corners[2], 1e-2, 'ourlet droit');
+  closePt(v(2, 8), corners[3], 1e-2, 'ourlet gauche');
+  // Sans ancres, même taille de texture : retour aux coins de l'image (le cache ne garde pas les ancres).
+  const t2 = computeTransform(cv, corners, 800, 1000);
+  closePt({ x: t2.vertices[0], y: t2.vertices[1] }, corners[0], 1e-2, 'coin haut-gauche');
   disposeTransform();
 });

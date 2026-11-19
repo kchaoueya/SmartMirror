@@ -37,10 +37,16 @@ export async function createRenderer(canvas) {
   // Caméra orthographique en pixels : y_scène = -y_écran (0 en haut, -h en bas)
   const camera = new THREE.OrthographicCamera(0, 640, 0, -480, -10, 10);
   camera.position.z = 1;
-  renderer.setSize(640, 480);
+  // updateStyle = false partout : la taille AFFICHÉE du canvas reste celle du CSS (100 % de #stage).
+  // Avec true, Three.js écrit style.width/height en pixels : le canvas restait figé à sa première taille
+  // et le bas du vêtement était coupé dès que la zone vidéo s'agrandissait.
+  renderer.setSize(640, 480, false);
+  let sizeW = 640, sizeH = 480;
 
   function resize(w, h) {
-    renderer.setSize(w, h);
+    renderer.setSize(w, h, false);
+    sizeW = w;
+    sizeH = h;
     camera.right = w;
     camera.bottom = -h;
     camera.updateProjectionMatrix();
@@ -51,7 +57,8 @@ export async function createRenderer(canvas) {
   renderer.setAnimationLoop((time, frame) => {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
-    if (w > 0 && h > 0 && (w !== canvas.width || h !== canvas.height)) resize(w, h);
+    // Comparaison en pixels CSS (canvas.width, lui, est multiplié par devicePixelRatio).
+    if (w > 0 && h > 0 && (w !== sizeW || h !== sizeH)) resize(w, h);
     renderer.render(scene, camera);
   });
 

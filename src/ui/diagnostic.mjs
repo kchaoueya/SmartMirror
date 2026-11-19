@@ -1,6 +1,6 @@
 // Propriétaire : Eya — S2
 // Mode diagnostic : surcouche 2D des repères, de leur confiance et des coins du vêtement.
-import { MIN_VISIBILITY } from '../vision/pose.js';
+import { MIN_VISIBILITY } from '../vision/pose.mjs';
 
 const OK = '#4ade80';      // repère fiable (détection MediaPipe)
 const BAD = '#f87171';     // repère sous le seuil de confiance
@@ -20,8 +20,8 @@ function fitCanvas(ctx) {
 
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {import('../contracts.js').TorsoLandmarks|null} landmarks
- * @param {import('../contracts.js').GarmentTransform|null} transform
+ * @param {import('../contracts.mjs').TorsoLandmarks|null} landmarks
+ * @param {import('../contracts.mjs').GarmentTransform|null} transform
  * @param {number} [minVisibility]
  */
 export function drawDiagnostic(ctx, landmarks, transform, minVisibility = MIN_VISIBILITY) {

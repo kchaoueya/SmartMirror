@@ -161,9 +161,9 @@ export class TorsoFilter {
   }
 
   /**
-   * @param {import('../contracts.js').TorsoLandmarks} lm  repères bruts (pixels d'affichage)
+   * @param {import('../contracts.mjs').TorsoLandmarks} lm  repères bruts (pixels d'affichage)
    * @param {number} now  ms (performance.now())
-   * @returns {import('../contracts.js').TorsoLandmarks} repères lissés (mêmes autres champs)
+   * @returns {import('../contracts.mjs').TorsoLandmarks} repères lissés (mêmes autres champs)
    */
   update(lm, now) {
     const dt = this.lastTime === null ? 0 : now - this.lastTime;

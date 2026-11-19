@@ -2,17 +2,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validateCatalog } from '../src/ui/ui.js';
+import { validateCatalog } from '../src/ui/ui.mjs';
 
 const good = (over = {}) => ({
   id: 'tshirt', name: 'T-shirt', texture: '/assets/garments/tshirt.png',
   size: [1024, 1024], fit: { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 }, ...over,
 });
 
-test('le catalog.json du projet est valide (3 hauts, aucun avertissement)', () => {
+test('le catalog.json du projet est valide (5 hauts, aucun avertissement)', () => {
   const json = JSON.parse(readFileSync(new URL('../public/assets/garments/catalog.json', import.meta.url), 'utf8'));
   const { catalog, warnings } = validateCatalog(json);
-  assert.deepEqual(catalog.garments.map((g) => g.id), ['tshirt', 'chemise', 'sweat']);
+  assert.deepEqual(catalog.garments.map((g) => g.id), ['tshirt-strass', 'tshirt-raye', 'pull-gris', 'pull-jaune', 'sweat']);
   assert.deepEqual(warnings, []);
 });
 
@@ -43,4 +43,35 @@ test('catalogue sans vêtement utilisable → erreur', () => {
   assert.throws(() => validateCatalog({}), /garments/);
   assert.throws(() => validateCatalog({ garments: [] }), /vide/);
   assert.throws(() => validateCatalog({ garments: [{ id: 'a' }] }), /vide/);
+});
+
+test('anchors : facultatif, 4 points [x, y] dans l\'ordre épaules puis ourlet', () => {
+  const anchors = [[282, 277], [763, 277], [720, 812], [323, 812]];
+  const { catalog, warnings } = validateCatalog({
+    garments: [
+      good({ id: 'ok', anchors }),
+      good({ id: 'trois', anchors: anchors.slice(0, 3) }),
+      good({ id: 'inverse', anchors: [anchors[1], anchors[0], anchors[2], anchors[3]] }), // épaules inversées
+      good({ id: 'texte', anchors: [['a', 1], ...anchors.slice(1)] }),
+    ],
+  });
+  assert.deepEqual(catalog.garments.map((g) => g.id), ['ok']);
+  assert.deepEqual(catalog.garments[0].anchors, anchors);
+  assert.equal(warnings.length, 3);
+  assert.ok(warnings.every((w) => /anchors/.test(w)));
+});
+
+test('sleeves : facultatif, 2 points, et seulement avec des ancres', () => {
+  const anchors = [[282, 277], [763, 277], [720, 812], [323, 812]];
+  const sleeves = [[180, 632], [856, 651]];
+  const { catalog, warnings } = validateCatalog({
+    garments: [
+      good({ id: 'ok', anchors, sleeves }),
+      good({ id: 'sans-ancres', sleeves }),
+      good({ id: 'un-seul', anchors, sleeves: [sleeves[0]] }),
+    ],
+  });
+  assert.deepEqual(catalog.garments.map((g) => g.id), ['ok']);
+  assert.equal(warnings.length, 2);
+  assert.ok(warnings.every((w) => /sleeves/.test(w)));
 });

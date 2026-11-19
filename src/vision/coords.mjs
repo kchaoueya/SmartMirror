@@ -74,9 +74,9 @@ export function isVisibleOnScreen(p, frame, margin = 0) {
  * On choisit donc le côté selon le réglage miroir, et pas selon la position x
  * (qui s'inverserait si la personne se tourne).
  *
- * @param {import('./pose.js').RawTorso} raw
+ * @param {import('./pose.mjs').RawTorso} raw
  * @param {ReturnType<typeof frameFromSizes>} frame
- * @returns {import('../contracts.js').TorsoLandmarks & {visible: boolean}}
+ * @returns {import('../contracts.mjs').TorsoLandmarks & {visible: boolean}}
  */
 export function torsoToDisplay(raw, frame) {
   const [screenLeftShoulder, screenRightShoulder, screenLeftHip, screenRightHip] = frame.mirror

@@ -1,7 +1,7 @@
 // Propriétaire : Salma — S1 (création du détecteur), S2 (mode VIDEO, 4 repères, confiance)
 // Détection corporelle avec MediaPipe Pose Landmarker (modèle préentraîné, aucun entraînement).
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
-import { LM } from '../contracts.js';
+import { LM } from '../contracts.mjs';
 
 export const MP_VERSION = '1.2.0'; // doit correspondre à package.json
 

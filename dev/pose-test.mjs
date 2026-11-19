@@ -1,11 +1,11 @@
 // Page de test de Salma (S2, S4) : vérifier que les 4 repères tombent EXACTEMENT sur le corps,
 // et comparer le suivi avec / sans flux optique entre deux inférences.
 // Ouvrir http://localhost:5173/dev/pose-test.html après `npm run dev`.
-import { startCamera, stopCamera, listCameras, activeCameraId } from '../src/vision/camera.js';
-import { createPoseDetector, detectTorso, isTorsoReliable, closePoseDetector } from '../src/vision/pose.js';
-import { computeFrame, torsoToDisplay } from '../src/vision/coords.js';
-import { loadOpenCV } from '../src/vision/cv-loader.js';
-import { OpticalFlowTracker } from '../src/vision/tracker.js';
+import { startCamera, stopCamera, listCameras, activeCameraId } from '../src/vision/camera.mjs';
+import { createPoseDetector, detectTorso, isTorsoReliable, closePoseDetector } from '../src/vision/pose.mjs';
+import { computeFrame, torsoToDisplay } from '../src/vision/coords.mjs';
+import { loadOpenCV } from '../src/vision/cv-loader.mjs';
+import { OpticalFlowTracker } from '../src/vision/tracker.mjs';
 
 const $ = (id) => document.getElementById(id);
 const video = $('video');

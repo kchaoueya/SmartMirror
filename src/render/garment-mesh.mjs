@@ -1,5 +1,5 @@
 // Propriétaire : Tasnim — S2 (maillage), S3 (application de l'homographie), S4 (offsets, masquage)
-import { GRID } from '../contracts.js';
+import { GRID } from '../contracts.mjs';
 
 // Nombre total de sommets : (cols+1) * (rows+1)
 // PlaneGeometry ordonne ses sommets ligne par ligne, gauche→droite, haut→bas — même convention que geometry.js.
