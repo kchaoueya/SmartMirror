@@ -2,9 +2,11 @@
 // Le squelette démarre même si les modules ne sont pas encore implémentés : l'erreur s'affiche dans le statut.
 import { AppState, DEFAULT_ADJUST } from './contracts.js';
 import { store, setState, onStateChange } from './state.js';
-import { renderState, bindControls, resetControls, loadCatalog, buildCatalog } from './ui/ui.js';
+import {
+  renderState, bindControls, resetControls, loadCatalog, buildCatalog, loadSavedAdjust, showRecording, showMeasures,
+} from './ui/ui.js';
 import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.js';
-import { RateCounter } from './metrics/metrics.js';
+import { RateCounter, LandmarkRecorder, torsoSample, downloadJSON } from './metrics/metrics.js';
 import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.js';
 
 import { startCamera, stopCamera } from './vision/camera.js';
@@ -47,6 +49,7 @@ function selectGarment(g) {
 }
 const renderRate = new RateCounter();
 const inferRate = new RateCounter();
+const recorder = new LandmarkRecorder(); // mesure de stabilité brut / lissé (S4, F04), mode diagnostic
 let loopId = 0;
 let lastInference = 0;
 let lastValid = 0;
@@ -175,6 +178,8 @@ function loop(now) {
         torso = estimateHips(torso, ratioFilter.value ?? DEFAULT_TORSO_RATIO);
       }
       store.landmarks = torsoFilter.update(torso, now);
+      // Même mesure avant et après le filtre : la dispersion brute / lissée mesure l'effet du filtre (F04).
+      recorder.push({ t: now, source: torso.source, raw: torsoSample(torso), smooth: torsoSample(store.landmarks) });
       lastValid = now;
       mode = level;
       seen = store.landmarks;
@@ -218,7 +223,29 @@ bindControls({
   onStop: stop,
   onAdjust: (a) => { store.adjust = a; },
   onReset: () => { store.adjust = { ...DEFAULT_ADJUST }; resetControls(store.adjust); },
-  onDiagnostic: (on) => { store.diagnostic = on; if (!on) { clearDiagnostic(diagCtx); stats.textContent = ''; } },
+  onDiagnostic: (on) => {
+    store.diagnostic = on;
+    showMeasures(on);
+    if (!on) { clearDiagnostic(diagCtx); stats.textContent = ''; }
+  },
+  onRecord: () => {
+    if (recorder.active) {
+      recorder.stop();
+      const summary = recorder.summary();
+      console.info('[Mesure] stabilité :', summary);
+      showRecording(false, summary);
+    } else {
+      recorder.start();
+      showRecording(true);
+    }
+  },
+  onExport: () => {
+    downloadJSON(recorder.toJSON({ filter: torsoFilter.mode, fit: store.fit, adjust: store.adjust }),
+      `mesure-stabilite-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`);
+  },
 });
+// Réglages de la dernière visite (F07) : retrouvés au lancement.
+const savedAdjust = loadSavedAdjust();
+if (savedAdjust) { store.adjust = savedAdjust; resetControls(savedAdjust); }
 
 boot();
