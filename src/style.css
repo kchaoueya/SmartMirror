@@ -25,6 +25,12 @@ button { padding: .4rem .8rem; cursor: pointer; }
 .catalog-btn { background: #333; color: #eee; border: 1px solid #555; border-radius: 6px; }
 .catalog-btn.active { background: #2d6be4; border-color: #2d6be4; }
 #stats { font-size: .75rem; white-space: pre-wrap; }
+#catalog { display: flex; flex-wrap: wrap; gap: .3rem; }
+.garment[aria-pressed="true"] { outline: 2px solid #facc15; font-weight: 600; }
+fieldset { border: 1px solid #333; display: flex; flex-direction: column; gap: .3rem; font-size: .85rem; }
+fieldset[hidden] { display: none; }
+output { font-variant-numeric: tabular-nums; }
+#record-result { white-space: pre-wrap; font-size: .8rem; }
 
 @media (max-width: 800px) {
   main { flex-direction: column; }

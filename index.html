@@ -37,11 +37,26 @@
       <h2>Couleur</h2>
       <div id="colors"></div>
       <h2>Réglages</h2>
-      <label>Taille <input id="adj-scale" type="range" min="0.7" max="1.3" step="0.01" value="1" /></label>
-      <label>Décalage X <input id="adj-x" type="range" min="-0.3" max="0.3" step="0.01" value="0" /></label>
-      <label>Décalage Y <input id="adj-y" type="range" min="-0.3" max="0.3" step="0.01" value="0" /></label>
+      <label>Taille <input id="adj-scale" type="range" min="0.7" max="1.3" step="0.01" value="1" /> <output id="adj-scale-val">100 %</output></label>
+      <label>Décalage X <input id="adj-x" type="range" min="-0.3" max="0.3" step="0.01" value="0" /> <output id="adj-x-val">0 %</output></label>
+      <label>Décalage Y <input id="adj-y" type="range" min="-0.3" max="0.3" step="0.01" value="0" /> <output id="adj-y-val">0 %</output></label>
       <button id="btn-reset">Réinitialiser</button>
       <label><input id="chk-diag" type="checkbox" /> Mode diagnostic</label>
+      <fieldset id="calibration" hidden>
+        <legend>Calibration du vêtement</legend>
+        <label>ks (épaules) <input id="cal-ks" type="range" min="1" max="2" step="0.01" /> <output id="cal-ks-val"></output></label>
+        <label>kh (hanches) <input id="cal-kh" type="range" min="1" max="2" step="0.01" /> <output id="cal-kh-val"></output></label>
+        <label>dc (encolure) <input id="cal-dc" type="range" min="0" max="0.4" step="0.01" /> <output id="cal-dc-val"></output></label>
+        <label>db (bas) <input id="cal-db" type="range" min="0" max="0.5" step="0.01" /> <output id="cal-db-val"></output></label>
+        <button id="cal-copy" type="button">Copier le fit</button>
+      </fieldset>
+      <fieldset id="measures" hidden>
+        <legend>Mesure de stabilité (F04)</legend>
+        <small>Restez immobile pendant l'enregistrement.</small>
+        <button id="btn-record" type="button">Enregistrer</button>
+        <button id="btn-export" type="button" disabled>Exporter (JSON)</button>
+        <output id="record-result"></output>
+      </fieldset>
       <button id="btn-stop">Arrêter</button>
       <pre id="stats"></pre>
     </aside>
