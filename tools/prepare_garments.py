@@ -117,7 +117,7 @@ def crop_resize(img: np.ndarray, fg: np.ndarray) -> tuple[np.ndarray, np.ndarray
     return img, fg
 
 
-SLIT = 7  # fentes du masque plus étroites que SLIT px (entre manche et corps) : refermées
+SLIT = 6  # fentes du masque de moins de 6 px (entre manche et corps) : refermées ; au-delà, vrai écart
 
 
 def close_slits(fg: np.ndarray) -> np.ndarray:
