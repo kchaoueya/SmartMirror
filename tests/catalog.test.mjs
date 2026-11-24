@@ -9,11 +9,19 @@ const good = (over = {}) => ({
   size: [1024, 1024], fit: { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 }, ...over,
 });
 
-test('le catalog.json du projet est valide (5 hauts, aucun avertissement)', () => {
+test('le catalog.json du projet est valide (5 hauts d\'origine + VITON-HD, aucun avertissement)', () => {
   const json = JSON.parse(readFileSync(new URL('../public/assets/garments/catalog.json', import.meta.url), 'utf8'));
   const { catalog, warnings } = validateCatalog(json);
-  assert.deepEqual(catalog.garments.map((g) => g.id), ['tshirt-strass', 'tshirt-raye', 'pull-gris', 'pull-jaune', 'sweat']);
+  const ids = catalog.garments.map((g) => g.id);
+  assert.deepEqual(ids.slice(0, 5), ['tshirt-strass', 'tshirt-raye', 'pull-gris', 'pull-jaune', 'sweat']);
   assert.deepEqual(warnings, []);
+  // Vêtements VITON-HD : rangés à part (publiables avec citation), crédités, avec ancres.
+  for (const g of catalog.garments.slice(5)) {
+    assert.match(g.texture, /^\/assets\/garments\/vitonhd\//, g.id);
+    assert.equal(g.source?.dataset, 'VITON-HD', g.id);
+    assert.ok(g.anchors, `${g.id} : ancres`);
+    assert.ok(['tshirt', 'pull', 'chemise', 'veste'].includes(g.category), g.id);
+  }
 });
 
 test('valeurs par défaut : size 1024×1024, colors []', () => {

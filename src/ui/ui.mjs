@@ -201,6 +201,14 @@ export function validateCatalog(json) {
       warnings.push(`${where} : skeleton invalide (8 articulations [u, v] dans [0, 1]), squelette par défaut utilisé`);
       delete garment.skeleton;
     }
+    // source (facultatif, crédits d'un jeu de données : tools/prepare_garments.py --source) : informatif,
+    // n'influe pas sur l'affichage. Mal formé : avertissement, le vêtement reste utilisable.
+    const src = g.source;
+    if (src !== undefined && !(src && typeof src === 'object' && typeof src.dataset === 'string' && src.dataset
+      && typeof src.id === 'string' && src.id)) {
+      warnings.push(`${where} : source invalide ({ dataset, id, license }), ignorée`);
+      delete garment.source;
+    }
     garments.push(garment);
   });
   if (!garments.length) throw new Error('Catalogue vide : aucun vêtement utilisable');
