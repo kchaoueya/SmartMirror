@@ -6,6 +6,8 @@
 
 /** Indices MediaPipe Pose (33 repères) utilisés par le projet. */
 export const LM = Object.freeze({
+  // Nez : seulement « visage visible » pour démarrer l'essayage (placement.js). N'entre PAS dans la fiabilité du buste.
+  NOSE: 0,
   LEFT_SHOULDER: 11,
   RIGHT_SHOULDER: 12,
   // Bras : skinning des manches (skinning.js). N'entrent PAS dans la fiabilité du buste.
@@ -34,7 +36,8 @@ export const LM = Object.freeze({
  * @property {Point2D} [er]  coude droit       absents des mesures du flux optique (tracker.js ne suit
  * @property {Point2D} [wl]  poignet gauche    que le buste) ; TorsoFilter garde alors la dernière
  * @property {Point2D} [wr]  poignet droit     position lissée.
- * @property {{sl:number, sr:number, hl:number, hr:number, el?:number, er?:number, wl?:number, wr?:number}} confidence
+ * @property {Point2D} [nose]  nez (détection MediaPipe seulement) : visage visible pour démarrer l'essayage
+ * @property {{sl:number, sr:number, hl:number, hr:number, el?:number, er?:number, wl?:number, wr?:number, nose?:number}} confidence
  *   visibilité 0..1
  * @property {'detection'|'optical-flow'} source  d'où vient la position
  * @property {number} timestamp  ms (performance.now())
