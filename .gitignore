@@ -13,3 +13,4 @@ certs/
 # Photos brutes de vêtements (Zara, téléchargements VITON-HD) : locales uniquement.
 # Les textures VITON-HD préparées (public/assets/garments/vitonhd/) sont, elles, versionnées.
 raw-garments/
+__pycache__/

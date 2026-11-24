@@ -242,8 +242,11 @@ def prepare_one(photo: Path, out_dir: Path, url_prefix: str, source: dict | None
         notes.append("manches introuvables : pas de champ sleeves (squelette par défaut)")
 
     (out_dir / "thumbs").mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(out_dir / f"{stem}.png"), bgra)
-    cv2.imwrite(str(out_dir / "thumbs" / f"{stem}.png"), thumbnail(bgra))
+    # Compression maximale : sans perte, −40 % environ ; ces fichiers sont versionnés et mis en cache
+    # par le Service Worker, la taille compte plus que la seconde gagnée à l'écriture.
+    png = [cv2.IMWRITE_PNG_COMPRESSION, 9]
+    cv2.imwrite(str(out_dir / f"{stem}.png"), bgra, png)
+    cv2.imwrite(str(out_dir / "thumbs" / f"{stem}.png"), thumbnail(bgra), png)
     h, w = bgra.shape[:2]
     entry = {
         "id": stem, "category": category, "name": human_name(stem),
