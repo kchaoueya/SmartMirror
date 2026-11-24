@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>SmartMirror — Commande confirmée</title>
+  <meta name="theme-color" content="#2C2420" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=DM+Sans:wght@400;500;600&display=swap" />
+  <style>
+    :root {
+      --bg:#FDFCFB; --surface:#FFFFFF; --text:#1C1917; --muted:#9C948C;
+      --dark:#2C2420; --accent:#B8874A; --border:#EAE6E1;
+      --neu-bg:#EEF7F0; --neu-fg:#2D6B34; --radius:10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --bg:#1A1714; --surface:#242019; --text:#EDE8E2; --muted:#8A8278; --dark:#EDE8E2; --accent:#C99A5A; --border:#33302C; color-scheme:dark; }
+    }
+    :root[data-theme="dark"] { --bg:#1A1714; --surface:#242019; --text:#EDE8E2; --muted:#8A8278; --dark:#EDE8E2; --accent:#C99A5A; --border:#33302C; color-scheme:dark; }
+    *, *::before, *::after { box-sizing:border-box; }
+    body { margin:0; font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+
+    nav { background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; padding-block:.85rem; padding-left:max(1.25rem,env(safe-area-inset-left,0px)); padding-right:max(1.25rem,env(safe-area-inset-right,0px)); }
+    .nav-logo { font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.2rem; color:var(--text); text-decoration:none; }
+    .nav-logo span { color:var(--accent); }
+
+    .steps { display:flex; align-items:center; justify-content:center; gap:0; padding:1.25rem 1rem; border-bottom:1px solid var(--border); background:var(--surface); }
+    .step { display:flex; align-items:center; gap:.4rem; font-size:.8rem; color:var(--muted); }
+    .step.done { color:var(--neu-fg); font-weight:600; }
+    .step-num { width:22px; height:22px; border-radius:50%; border:1.5px solid currentColor; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; flex-shrink:0; }
+    .step.done .step-num { background:var(--neu-fg); border-color:var(--neu-fg); color:#fff; }
+    .step-sep { width:2.5rem; height:1px; background:var(--border); margin:0 .4rem; }
+
+    .wrap { max-width:680px; margin:0 auto; padding:3rem max(1.25rem,env(safe-area-inset-left,0px)); }
+
+    .success-banner {
+      background:var(--neu-bg); border:1px solid color-mix(in srgb,var(--neu-fg) 25%,transparent);
+      border-radius:var(--radius); padding:2rem; text-align:center; margin-bottom:2rem;
+    }
+    .success-icon { font-size:2.5rem; margin-bottom:.75rem; }
+    .success-title { font-family:'Playfair Display',Georgia,serif; font-size:1.6rem; font-weight:700; color:var(--neu-fg); margin:0 0 .5rem; }
+    .success-sub { color:var(--muted); font-size:.9rem; line-height:1.6; }
+    .order-id { margin-top:1rem; font-size:.82rem; color:var(--muted); }
+    .order-id strong { font-family:monospace; color:var(--text); font-size:.9rem; }
+
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem; }
+    .card h2 { font-size:.92rem; font-weight:600; margin:0 0 1rem; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; font-size:.75rem; }
+    .info-line { display:flex; justify-content:space-between; font-size:.87rem; margin-bottom:.5rem; }
+    .info-line span:first-child { color:var(--muted); }
+    .item-row { display:flex; align-items:center; gap:.75rem; margin-bottom:.7rem; }
+    .item-img { width:52px; height:52px; border-radius:6px; overflow:hidden; background:#EDEBE7; flex-shrink:0; }
+    .item-img img { width:100%; height:100%; object-fit:cover; }
+    .item-name { font-size:.87rem; font-weight:500; }
+    .item-meta { font-size:.76rem; color:var(--muted); margin-top:.1rem; }
+    .item-price { margin-left:auto; font-weight:600; font-size:.9rem; white-space:nowrap; }
+
+    .total-line { display:flex; justify-content:space-between; padding-top:.8rem; border-top:1px solid var(--border); font-weight:600; }
+    .total-line span:last-child { font-family:'Playfair Display',Georgia,serif; font-size:1.1rem; }
+
+    .steps-delivery { display:flex; flex-direction:column; gap:.6rem; }
+    .del-step { display:flex; align-items:flex-start; gap:.75rem; }
+    .del-dot { width:28px; height:28px; border-radius:50%; background:var(--neu-bg); border:2px solid var(--neu-fg); display:flex; align-items:center; justify-content:center; font-size:.8rem; flex-shrink:0; margin-top:.1rem; }
+    .del-text { font-size:.86rem; line-height:1.5; }
+    .del-text strong { display:block; font-weight:600; }
+
+    .actions { display:flex; gap:.8rem; flex-wrap:wrap; margin-top:2rem; }
+    .btn-primary { flex:1; padding:.75rem 1rem; border-radius:9px; background:var(--dark); color:#fff; border:none; font-family:'DM Sans',sans-serif; font-size:.9rem; font-weight:600; cursor:pointer; text-align:center; text-decoration:none; transition:opacity .15s; }
+    .btn-primary:hover { opacity:.85; }
+    .btn-outline { flex:1; padding:.7rem 1rem; border-radius:9px; background:transparent; color:var(--text); border:1.5px solid var(--border); font-family:'DM Sans',sans-serif; font-size:.88rem; font-weight:500; cursor:pointer; text-align:center; text-decoration:none; transition:border-color .15s; }
+    .btn-outline:hover { border-color:var(--dark); }
+
+    @media (max-width:480px) { .actions { flex-direction:column; } }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/src/pages/home.html" class="nav-logo">Smart<span>Mirror</span></a>
+</nav>
+
+<div class="steps">
+  <div class="step done"><div class="step-num">✓</div> Panier</div>
+  <div class="step-sep"></div>
+  <div class="step done"><div class="step-num">✓</div> Livraison</div>
+  <div class="step-sep"></div>
+  <div class="step done"><div class="step-num">✓</div> Confirmation</div>
+</div>
+
+<div class="wrap">
+  <div class="success-banner">
+    <div class="success-icon">🎉</div>
+    <h1 class="success-title">Commande confirmée !</h1>
+    <p class="success-sub">Merci pour votre achat. Vous recevrez un SMS de confirmation dans quelques minutes.</p>
+    <div class="order-id">Numéro de commande : <strong id="order-id">—</strong></div>
+  </div>
+
+  <div class="card" id="card-items">
+    <h2>Articles commandés</h2>
+    <div id="order-items"></div>
+    <div class="total-line"><span>Total payé</span><span id="order-total">—</span></div>
+  </div>
+
+  <div class="card" id="card-shipping">
+    <h2>Livraison à</h2>
+    <div id="order-shipping"></div>
+  </div>
+
+  <div class="card">
+    <h2>Prochaines étapes</h2>
+    <div class="steps-delivery">
+      <div class="del-step"><div class="del-dot">1</div><div class="del-text"><strong>SMS de confirmation</strong>Vous recevrez un message avec les détails de votre commande.</div></div>
+      <div class="del-step"><div class="del-dot">2</div><div class="del-text"><strong>Préparation (24–48 h)</strong>Le vendeur prépare votre colis soigneusement.</div></div>
+      <div class="del-step"><div class="del-dot">3</div><div class="del-text"><strong>Livraison à domicile</strong>Un livreur vous contacte avant le passage. Paiement à la réception.</div></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <a href="/src/pages/home.html" class="btn-primary">Continuer mes achats</a>
+    <a href="/" class="btn-outline">Essayer en AR 📷</a>
+  </div>
+</div>
+
+<script>
+  try {
+    const order = JSON.parse(localStorage.getItem('sm_last_order') || 'null');
+    if (!order) { window.location.href = '/src/pages/home.html'; }
+
+    document.getElementById('order-id').textContent = order.id;
+    document.getElementById('order-total').textContent = order.total + ' DT';
+
+    document.getElementById('order-items').innerHTML = order.items.map(i => `
+      <div class="item-row">
+        <div class="item-img"><img src="${i.texture}" alt="${i.name}" /></div>
+        <div><div class="item-name">${i.name}</div><div class="item-meta">Taille ${i.size} · ×${i.qty}</div></div>
+        <div class="item-price">${i.price * i.qty} DT</div>
+      </div>`).join('');
+
+    const s = order.shipping;
+    const payLabel = order.payment === 'cod' ? 'Paiement à la livraison' : 'Virement bancaire';
+    document.getElementById('order-shipping').innerHTML = `
+      <div class="info-line"><span>Nom</span><span>${s.prenom} ${s.nom}</span></div>
+      <div class="info-line"><span>Téléphone</span><span>${s.tel}</span></div>
+      <div class="info-line"><span>Adresse</span><span>${s.adresse}, ${s.ville}</span></div>
+      <div class="info-line"><span>Gouvernorat</span><span>${s.wilaya}</span></div>
+      <div class="info-line"><span>Paiement</span><span>${payLabel}</span></div>
+      ${s.note ? `<div class="info-line"><span>Note</span><span>${s.note}</span></div>` : ''}`;
+  } catch { window.location.href = '/src/pages/home.html'; }
+</script>
+</body>
+</html>

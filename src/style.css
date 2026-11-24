@@ -1,7 +1,9 @@
 /* Propriétaire : Eya */
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, sans-serif; background: #111; color: #eee; }
-header { display: flex; justify-content: space-between; align-items: center; padding: .5rem 1rem; }
+header { display: flex; justify-content: space-between; align-items: center; padding: .5rem 1rem; gap: .75rem; }
+.btn-back { color: #eee; font-size: .82rem; text-decoration: none; opacity: .6; white-space: nowrap; }
+.btn-back:hover { opacity: 1; }
 h1 { font-size: 1.2rem; margin: 0; }
 .status { font-size: .9rem; opacity: .8; }
 /* Badge PWA : visible seulement sans connexion (géré par src/ui/pwa.js) */

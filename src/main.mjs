@@ -117,13 +117,19 @@ async function boot() {
   if (catalog.status === 'fulfilled') {
     ctx.catalog = catalog.value;
     if (ctx.garment && ctx.catalog.garments?.length) {
-      selectGarment(ctx.catalog.garments[0]);
+      // Pré-sélection depuis la page home : index.html#sweat → id = 'sweat'
+      const hashId = location.hash.slice(1);
+      const preselect = hashId ? ctx.catalog.garments.find(g => g.id === hashId) : null;
+      selectGarment(preselect ?? ctx.catalog.garments[0]);
       buildCatalog(ctx.catalog.garments, selectGarment);
     }
   } else errors.push(catalog.reason.message);
 
   if (errors.length) console.warn('Modules non prêts :\n- ' + errors.join('\n- '));
   setState(AppState.READY, errors.length ? { message: `Prêt (${errors.length} module(s) à implémenter, voir console)` } : {});
+
+  // Auto-démarrage si l'utilisateur arrive depuis le catalogue (hash = id du vêtement)
+  if (location.hash.slice(1)) start();
 }
 
 async function start() {
