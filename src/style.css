@@ -17,6 +17,11 @@ main { display: flex; gap: 1rem; padding: 0 1rem 1rem; }
 #stage video { transform: scaleX(-1); }      /* effet miroir : à répercuter dans coords.js */
 #diag-canvas { pointer-events: none; }
 .hint { position: absolute; bottom: 1rem; width: 100%; text-align: center; text-shadow: 0 0 4px #000; }
+/* « Placez-vous » (Salma) : consigne lisible à 2 m, puis compte à rebours en très grand. */
+.placement { position: absolute; top: 40%; left: 0; width: 100%; margin: 0; transform: translateY(-50%);
+  text-align: center; font-size: clamp(1.4rem, 4vw, 2.6rem); font-weight: 600; text-shadow: 0 0 8px #000, 0 0 2px #000;
+  pointer-events: none; }
+.placement.countdown { font-size: clamp(5rem, 22vw, 14rem); }
 
 aside { width: 16rem; display: flex; flex-direction: column; gap: .4rem; }
 aside h2 { font-size: 1rem; margin: .6rem 0 .2rem; }

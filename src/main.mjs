@@ -2,7 +2,7 @@
 // Le squelette démarre même si les modules ne sont pas encore implémentés : l'erreur s'affiche dans le statut.
 import { AppState, DEFAULT_ADJUST } from './contracts.mjs';
 import { store, setState, onStateChange } from './state.mjs';
-import { renderState, bindControls, resetControls, loadCatalog, buildCatalog } from './ui/ui.mjs';
+import { renderState, bindControls, resetControls, loadCatalog, buildCatalog, showPlacement } from './ui/ui.mjs';
 import { drawDiagnostic, clearDiagnostic } from './ui/diagnostic.mjs';
 import { RateCounter } from './metrics/metrics.mjs';
 import { registerServiceWorker, setupOfflineBadge } from './ui/pwa.mjs';
@@ -15,6 +15,7 @@ import { TorsoFilter, EmaFilter } from './vision/filters.mjs';
 import { computeFrame, torsoToDisplay, isVisibleOnScreen } from './vision/coords.mjs';
 import { destinationCorners, computeTransform, estimateHips, torsoRatio, DEFAULT_TORSO_RATIO } from './vision/geometry.mjs';
 import { prepareSkin, skinVertices, armTarget, stepBlend } from './vision/skinning.mjs';
+import { Placement, shoulderRatio, cornersOutside } from './vision/placement.mjs';
 
 import { createRenderer, THREE } from './render/renderer.mjs';
 import { GarmentMesh } from './render/garment-mesh.mjs';
@@ -49,6 +50,11 @@ let skin = null;
 const armBlend = { left: 0, right: 0 };
 const armGoal = { left: 0, right: 0 };
 let skinMs = 0; // durée du skinning, moyenne glissante (mode diagnostic)
+// « Placez-vous » (Salma) : le vêtement n'apparaît qu'une fois le cadrage bon (placement.js).
+const placement = new Placement();
+let bodyFull = false; // dernière mesure : épaules + hanches fiables et à l'écran
+let faceOk = false;   // dernier nez détecté fiable et à l'écran (le flux optique ne suit pas le visage)
+let lastFrame = null; // dimensions de l'affichage (largeur des épaules relative, coins hors de l'image)
 
 function selectGarment(g) {
   return loadGarmentTexture(THREE, g.texture)
@@ -82,6 +88,7 @@ function resetTracking() {
   torsoFilter.reset();
   ratioFilter.reset();
   armBlend.left = armBlend.right = armGoal.left = armGoal.right = 0;
+  bodyFull = faceOk = false;
 }
 
 onStateChange((state, _prev, detail) => renderState(state, detail));
@@ -140,6 +147,7 @@ export async function startTryOn(garmentId) {
   await booted;
   const g = ctx.catalog?.garments?.find((x) => x.id === garmentId);
   if (!g) throw new Error(`Vêtement inconnu : « ${garmentId} »`);
+  placement.reset(); // nouvel article : masqué jusqu'au bon cadrage, puis 3-2-1
   await selectGarment(g);
   if (!running) await start();
 }
@@ -177,6 +185,8 @@ function stop() {
   ctx.garment?.setVisible(false);
   clearDiagnostic(diagCtx);
   resetTracking();
+  placement.reset();
+  showPlacement(null);
   setState(AppState.STOPPED);
 }
 
@@ -210,6 +220,11 @@ function loop(now) {
     const onScreen = level === 'full'
       ? torso.visible
       : isVisibleOnScreen(torso.sl, frame) && isVisibleOnScreen(torso.sr, frame);
+    // Placement (Salma) : buste complet, visage (détection MediaPipe seulement : le flux optique ne
+    // fournit pas le nez, on garde alors la dernière valeur), dimensions de l'affichage.
+    lastFrame = frame;
+    bodyFull = level === 'full' && onScreen;
+    if (torso.nose) faceOk = torso.confidence.nose >= MIN_VISIBILITY && isVisibleOnScreen(torso.nose, frame);
     if (level !== 'none' && onScreen) {
       if (level === 'full') {
         const r = torsoRatio(torso);
@@ -240,9 +255,10 @@ function loop(now) {
 
   // 4. Homographie OpenCV.js (Salma) → maillage (Tasnim).
   let transform = null;
+  let corners = null;
   if (valid && ctx.cv) {
     const fit = store.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
-    const corners = destinationCorners(store.landmarks, fit, store.adjust);
+    corners = destinationCorners(store.landmarks, fit, store.adjust);
     const [texW, texH] = shown?.size ?? [1024, 1024];
     transform = computeTransform(ctx.cv, corners, texW, texH, shown?.anchors);
   }
@@ -259,7 +275,15 @@ function loop(now) {
     skinMs += 0.05 * (performance.now() - t0 - skinMs);
     ctx.garment?.setVertices(vertices);
   } else if (transform) ctx.garment?.setVertices(transform.vertices);
-  ctx.garment?.setVisible(Boolean(valid && transform));
+  // 4 ter. « Placez-vous » (Salma) : masqué tant que le cadrage n'est pas bon, et dès qu'on s'approche trop.
+  const view = placement.update({
+    fullBody: Boolean(valid && bodyFull),
+    face: faceOk,
+    shoulders: valid ? shoulderRatio(store.landmarks, lastFrame?.displayW) : null,
+    outside: corners && lastFrame ? cornersOutside(corners, lastFrame) : 0,
+  }, now);
+  showPlacement(view);
+  ctx.garment?.setVisible(Boolean(valid && transform && view.visible));
 
   // 5. Rendu WebGPU (Tasnim).
   if (ctx.gfx) { ctx.gfx.render(); renderRate.tick(now); }
