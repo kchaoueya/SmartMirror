@@ -21,6 +21,8 @@ Options :
                         d'après <dossier>/sources.json écrit par fetch_vitonhd.py
     --merge-catalog     ajoute / met à jour les entrées dans public/assets/garments/catalog.json
                         sans toucher aux autres vêtements (sinon : entrées affichées seulement)
+Corriger les liserés d'une texture déjà préparée (sans la redétourer) :
+    python tools/prepare_garments.py --bleed public/assets/garments/pull-gris.png ...
 """
 from __future__ import annotations
 
@@ -115,21 +117,57 @@ def crop_resize(img: np.ndarray, fg: np.ndarray) -> tuple[np.ndarray, np.ndarray
     return img, fg
 
 
+SLIT = 7  # fentes du masque plus étroites que SLIT px (entre manche et corps) : refermées
+
+
+def close_slits(fg: np.ndarray) -> np.ndarray:
+    """Referme les fentes fines (aisselle, manche posée contre le flanc). Le masque y laisse passer le
+    fond blanc de la photo sur quelques pixels ; une fois le maillage étiré, ces fentes deviennent des
+    traits blancs. Fermeture morphologique : seules les ouvertures < SLIT px sont comblées."""
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (SLIT, SLIT))
+    return cv2.morphologyEx(fg.astype(np.uint8), cv2.MORPH_CLOSE, k).astype(bool) | fg
+
+
+def bleed(color: np.ndarray, body: np.ndarray) -> np.ndarray:
+    """« Alpha bleeding » : chaque pixel transparent prend la couleur du pixel de vêtement le plus proche.
+    Pourquoi tout le fond et pas un anneau : le GPU échantillonne des versions réduites de la texture
+    (mipmaps) quand le vêtement est petit à l'écran ; au niveau n, un pixel mélange 2ⁿ × 2ⁿ pixels
+    d'origine, donc un anneau de 6 px ne protège plus le bord dès le niveau 3, et le fond (blanc ou noir)
+    réapparaît en liseré. Transformée de distance d'OpenCV avec étiquettes : un seul passage, O(N)."""
+    src = (~body).astype(np.uint8)  # 0 = vêtement : les étiquettes désignent le pixel de vêtement le plus proche
+    _, labels = cv2.distanceTransformWithLabels(src, cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL)
+    seeds = np.flatnonzero(src.ravel() == 0)  # étiquette k (≥ 1) = k-ième pixel nul en ordre de balayage
+    out = color.reshape(-1, 3)[seeds][labels.ravel() - 1].reshape(color.shape)
+    out[body] = color[body]
+    return out
+
+
 def rgba_texture(img: np.ndarray, fg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Texture BGRA. Sur fond blanc, le contour mélange vêtement et blanc sur 1 à 2 px : on rogne 1 px,
-    on recolore depuis l'intérieur un anneau de 3 px et le fond proche (le filtrage de texture du GPU
-    lit aussi les pixels transparents voisins), puis alpha = masque adouci par un flou 3×3.
+    """Texture BGRA. Sur fond blanc, le contour mélange vêtement et blanc sur 1 à 2 px. On referme les
+    fentes fines, on rogne 1 px, puis TOUT ce qui n'est pas « sûr » (anneau de 3 px du contour, fentes
+    refermées — blanches sur la photo —, fond) reprend la couleur du pixel sûr le plus proche (bleed).
+    Pas d'inpainting ici : il s'appuierait aussi sur le fond blanc voisin et salirait le bord.
+    Alpha = silhouette adoucie par un flou 3×3.
     @returns (texture BGRA, silhouette rognée)"""
     k3 = np.ones((3, 3), np.uint8)
-    body = cv2.erode(fg.astype(np.uint8), k3, iterations=1).astype(bool)
-    inner = cv2.erode(body.astype(np.uint8), k3, iterations=3).astype(bool)
-    near = cv2.dilate(body.astype(np.uint8), k3, iterations=6).astype(bool)
-    redo = (near & ~inner).astype(np.uint8)
-    color = cv2.inpaint(img, redo, 3, cv2.INPAINT_TELEA)
+    closed = close_slits(fg)
+    body = cv2.erode(closed.astype(np.uint8), k3, iterations=1).astype(bool)
+    slits = cv2.dilate((closed & ~fg).astype(np.uint8), k3, iterations=2).astype(bool)
+    trusted = cv2.erode(body.astype(np.uint8), k3, iterations=3).astype(bool) & ~slits
+    color = bleed(img, trusted if trusted.any() else body)
     alpha = cv2.blur(body.astype(np.float32), (3, 3))
     bgra = np.dstack([color, np.round(alpha * 255).astype(np.uint8)])
-    bgra[~near, :3] = 0  # fond lointain : couleur sans importance, mieux compressée
     return bgra, body
+
+
+def bleed_png(path: Path) -> None:
+    """Corrige une texture DÉJÀ préparée (autre outil, images d'origine perdues) : alpha inchangé, couleurs
+    des pixels transparents remplacées par celles du vêtement le plus proche."""
+    t = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+    if t is None or t.ndim != 3 or t.shape[2] != 4:
+        raise ValueError(f"{path.name} : PNG RGBA attendu")
+    t[:, :, :3] = bleed(np.ascontiguousarray(t[:, :, :3]), t[:, :, 3] >= 128)
+    cv2.imwrite(str(path), t, [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
 
 def thumbnail(bgra: np.ndarray) -> np.ndarray:
@@ -314,6 +352,11 @@ def load_sources(folder: Path, kind: str) -> dict[str, dict]:
 
 
 def main(argv: list[str]) -> int:
+    if argv[:1] == ["--bleed"]:  # python tools/prepare_garments.py --bleed texture.png [...]
+        for p in map(Path, argv[1:]):
+            bleed_png(p)
+            print(f"✓ {p} : fond transparent recoloré (alpha inchangé)")
+        return 0
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("folder", type=Path)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)

@@ -76,7 +76,7 @@
       "texture": "/assets/garments/vitonhd/pull-bordeaux.png",
       "thumb": "/assets/garments/vitonhd/thumbs/pull-bordeaux.png",
       "size": [672, 880],
-      "anchors": [[161, 60], [502, 60], [534, 780], [133, 780]],
+      "anchors": [[162, 60], [501, 60], [534, 780], [133, 780]],
       "fit": { "ks": 1.32, "kh": 1.32, "dc": 0.1, "db": 0.08 },
       "colors": [],
       "sleeves": [[85, 490], [583, 477]],
@@ -102,10 +102,10 @@
       "texture": "/assets/garments/vitonhd/pull-gris-clair.png",
       "thumb": "/assets/garments/vitonhd/thumbs/pull-gris-clair.png",
       "size": [674, 880],
-      "anchors": [[165, 52], [492, 52], [504, 792], [139, 792]],
+      "anchors": [[166, 52], [491, 52], [504, 792], [139, 792]],
       "fit": { "ks": 1.32, "kh": 1.32, "dc": 0.1, "db": 0.08 },
       "colors": [],
-      "sleeves": [[87, 481], [576, 482]],
+      "sleeves": [[88, 480], [576, 482]],
       "source": { "dataset": "VITON-HD", "id": "00094_00", "license": "CC BY-NC 4.0 (research, citation required)" }
     },
     {

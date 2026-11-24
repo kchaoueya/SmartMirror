@@ -96,6 +96,42 @@ class PrepareTest(unittest.TestCase):
         self.assertLess(left[0], sl[0])
         self.assertGreater(right[0], sr[0])
 
+    def test_pas_de_liseré_fond_recoloré_et_fentes_refermées(self):
+        # Fente de 3 px entre la manche gauche et le corps, là où ils se touchent (y0 … y0 + 90), ouverte
+        # vers le bas sur l'écart sous l'aisselle (comme une vraie fente : un trou fermé serait une étiquette),
+        # dans la photo (blanc) ET dans le masque.
+        img, mask = fake_garment()
+        x0, y0 = BODY[0], BODY[1]
+        for target, val in ((img, (255, 255, 255)), (mask, 0)):
+            cv2.line(target, (x0 - 2, y0 + 20), (x0 - 2, y0 + 110), val, 3)
+        cv2.imwrite(str(self.tmp / "tshirt-test.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        cv2.imwrite(str(self.tmp / "masks" / "tshirt-test.jpg"), mask)
+        entry, _ = pg.prepare_one(self.tmp / "tshirt-test.jpg", self.out, "/x")
+        tex = cv2.imread(str(self.out / "tshirt-test.png"), cv2.IMREAD_UNCHANGED).astype(int)
+        blue = np.array([180, 60, 30])
+        # 1. Fond transparent : couleur du vêtement partout (ni blanc ni noir), même loin du bord.
+        far = tex[tex[:, :, 3] == 0][:, :3]
+        self.assertLess(np.abs(far - blue).max(), 40, "fond transparent recoloré")
+        # 2. Fente refermée : opaque et bleue (pas le blanc de la photo).
+        m = int(pg.MARGIN * max(260 + 200, BODY[3] - BODY[1]))
+        sx, sy = x0 - 2 - (BODY[0] - 130 - m), y0 + 50 - (BODY[1] - m)
+        self.assertEqual(tex[sy, sx, 3], 255, "fente refermée")
+        self.assertLess(np.abs(tex[sy, sx, :3] - blue).max(), 40, "fente recolorée")
+        # 3. Mipmap niveau 3 (moyenne 8×8, comme le GPU, couleurs non prémultipliées) : bord sans liseré.
+        mip = cv2.resize(tex.astype(np.float32), None, fx=1 / 8, fy=1 / 8, interpolation=cv2.INTER_AREA)
+        edge = (mip[:, :, 3] > 25) & (mip[:, :, 3] < 230)
+        self.assertLess(np.abs(mip[edge][:, :3] - blue).max(), 40, "pas de liseré aux mipmaps")
+
+    def test_bleed_png_alpha_inchange(self):
+        t = np.zeros((40, 40, 4), np.uint8)
+        t[10:30, 10:30] = (20, 200, 30, 255)
+        path = self.tmp / "t.png"
+        cv2.imwrite(str(path), t)
+        pg.bleed_png(path)
+        u = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+        self.assertTrue(np.array_equal(u[:, :, 3], t[:, :, 3]))
+        self.assertEqual(tuple(u[0, 0, :3]), (20, 200, 30))
+
     def test_grabcut_sans_masque(self):
         (self.tmp / "masks" / "tshirt-test.jpg").unlink()
         entry, notes = pg.prepare_one(self.tmp / "tshirt-test.jpg", self.out, "/x")
