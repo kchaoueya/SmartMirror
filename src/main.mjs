@@ -51,7 +51,7 @@ const armGoal = { left: 0, right: 0 };
 let skinMs = 0; // durée du skinning, moyenne glissante (mode diagnostic)
 
 function selectGarment(g) {
-  loadGarmentTexture(THREE, g.texture)
+  return loadGarmentTexture(THREE, g.texture)
     .then(tex => {
       ctx.garment?.setTexture(tex);
       shown = g;
@@ -118,7 +118,8 @@ async function boot() {
     ctx.catalog = catalog.value;
     if (ctx.garment && ctx.catalog.garments?.length) {
       selectGarment(ctx.catalog.garments[0]);
-      buildCatalog(ctx.catalog.garments, selectGarment);
+      // Catalogue de test : passe par le même point d'entrée que la future boutique.
+      buildCatalog(ctx.catalog.garments, (g) => startTryOn(g.id));
     }
   } else errors.push(catalog.reason.message);
 
@@ -126,11 +127,35 @@ async function boot() {
   setState(AppState.READY, errors.length ? { message: `Prêt (${errors.length} module(s) à implémenter, voir console)` } : {});
 }
 
+let running = false; // caméra et boucle actives
+
+/**
+ * Point d'entrée de la boutique : essayer UN vêtement du catalogue. Charge sa texture, puis lance la
+ * caméra et le suivi s'ils ne tournent pas déjà (appel répété = changement d'article, sans redémarrer
+ * la caméra). Utilisable depuis une autre page : window.smartMirror.startTryOn('pull-gris').
+ * @param {string} garmentId  id du catalogue (catalog.json)
+ * @returns {Promise<void>}  rejetée si l'id est inconnu ou si l'application n'a pas pu démarrer
+ */
+export async function startTryOn(garmentId) {
+  await booted;
+  const g = ctx.catalog?.garments?.find((x) => x.id === garmentId);
+  if (!g) throw new Error(`Vêtement inconnu : « ${garmentId} »`);
+  await selectGarment(g);
+  if (!running) await start();
+}
+
+/** Fin de l'essayage : caméra coupée, vêtement masqué, suivi remis à zéro. */
+export function stopTryOn() {
+  if (running) stop();
+}
+
 async function start() {
+  running = true;
   try {
     await startCamera(video);
   } catch (e) {
     console.error(e);
+    running = false;
     return setState(e.code === 'denied' ? AppState.PERMISSION_DENIED : AppState.RESOURCE_ERROR, { message: e.message, source: 'camera' });
   }
   setState(AppState.SEARCHING);
@@ -146,6 +171,7 @@ async function start() {
 }
 
 function stop() {
+  running = false;
   cancelAnimationFrame(loopId);
   stopCamera(video);
   ctx.garment?.setVisible(false);
@@ -248,11 +274,14 @@ function loop(now) {
 }
 
 bindControls({
-  onStart: start,
-  onStop: stop,
+  // « Démarrer » essaie le haut affiché (ou le premier du catalogue) : même chemin que la boutique.
+  onStart: () => startTryOn((shown ?? ctx.catalog?.garments?.[0])?.id).catch((e) => console.warn(e.message)),
+  onStop: stopTryOn,
   onAdjust: (a) => { store.adjust = a; },
   onReset: () => { store.adjust = { ...DEFAULT_ADJUST }; resetControls(store.adjust); },
   onDiagnostic: (on) => { store.diagnostic = on; if (!on) { clearDiagnostic(diagCtx); stats.textContent = ''; } },
 });
 
-boot();
+const booted = boot();
+// Accès pour la future page boutique (script classique, console) sans importer le module.
+window.smartMirror = { startTryOn, stopTryOn };
