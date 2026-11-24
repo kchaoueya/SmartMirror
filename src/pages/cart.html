@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>SmartMirror — Panier</title>
+  <meta name="theme-color" content="#2C2420" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=DM+Sans:wght@400;500;600&display=swap" />
+  <style>
+    :root {
+      --bg:#FDFCFB; --surface:#FFFFFF; --text:#1C1917; --muted:#9C948C;
+      --dark:#2C2420; --accent:#B8874A; --border:#EAE6E1;
+      --neu-bg:#EEF7F0; --neu-fg:#2D6B34; --radius:10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg:#1A1714; --surface:#242019; --text:#EDE8E2; --muted:#8A8278;
+        --dark:#EDE8E2; --accent:#C99A5A; --border:#33302C; color-scheme:dark;
+      }
+    }
+    :root[data-theme="dark"] { --bg:#1A1714; --surface:#242019; --text:#EDE8E2; --muted:#8A8278; --dark:#EDE8E2; --accent:#C99A5A; --border:#33302C; color-scheme:dark; }
+    *, *::before, *::after { box-sizing:border-box; }
+    body { margin:0; font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+
+    nav { position:sticky; top:0; z-index:100; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:1rem; padding-block:.85rem; padding-left:max(1.25rem,env(safe-area-inset-left,0px)); padding-right:max(1.25rem,env(safe-area-inset-right,0px)); }
+    .nav-logo { font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.2rem; color:var(--text); text-decoration:none; letter-spacing:-.3px; }
+    .nav-logo span { color:var(--accent); }
+    .nav-back { margin-left:auto; font-size:.82rem; color:var(--muted); text-decoration:none; }
+    .nav-back:hover { color:var(--text); }
+
+    .page { max-width:1000px; margin:0 auto; padding:2rem max(1.25rem,env(safe-area-inset-left,0px)); display:grid; grid-template-columns:1fr 320px; gap:2rem; align-items:start; }
+    h1 { font-family:'Playfair Display',Georgia,serif; font-size:1.6rem; font-weight:700; margin:0 0 1.5rem; }
+
+    /* ITEMS */
+    .cart-items { display:flex; flex-direction:column; gap:1rem; }
+    .item { display:flex; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; align-items:center; }
+    .item-img { width:80px; height:80px; border-radius:7px; overflow:hidden; background:#EDEBE7; flex-shrink:0; }
+    .item-img img { width:100%; height:100%; object-fit:cover; }
+    .item-info { flex:1; min-width:0; }
+    .item-name { font-weight:600; font-size:.93rem; }
+    .item-meta { font-size:.78rem; color:var(--muted); margin-top:.2rem; }
+    .item-price { font-family:'Playfair Display',Georgia,serif; font-size:1.1rem; font-weight:700; white-space:nowrap; }
+    .item-controls { display:flex; align-items:center; gap:.4rem; margin-top:.5rem; }
+    .qty-btn { width:28px; height:28px; border-radius:6px; border:1.5px solid var(--border); background:transparent; color:var(--text); font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .12s; }
+    .qty-btn:hover { border-color:var(--dark); }
+    .qty-val { font-size:.9rem; font-weight:600; min-width:1.5rem; text-align:center; }
+    .item-remove { margin-left:auto; background:none; border:none; color:var(--muted); font-size:.78rem; cursor:pointer; padding:.2rem .4rem; border-radius:5px; transition:color .12s; }
+    .item-remove:hover { color:#c0392b; }
+
+    /* SUMMARY */
+    .summary { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; position:sticky; top:5rem; }
+    .summary h2 { font-family:'Playfair Display',Georgia,serif; font-size:1.1rem; font-weight:700; margin:0 0 1.2rem; }
+    .summary-line { display:flex; justify-content:space-between; font-size:.88rem; margin-bottom:.6rem; color:var(--muted); }
+    .summary-line.total { font-size:1rem; font-weight:600; color:var(--text); border-top:1px solid var(--border); padding-top:.8rem; margin-top:.4rem; }
+    .summary-line.total .val { font-family:'Playfair Display',Georgia,serif; font-size:1.2rem; }
+    .livraison-note { font-size:.75rem; color:var(--neu-fg); background:var(--neu-bg); padding:.4rem .7rem; border-radius:6px; margin:1rem 0; }
+    .btn-checkout { display:block; width:100%; padding:.85rem; border-radius:9px; background:var(--dark); color:#fff; border:none; font-family:'DM Sans',sans-serif; font-size:.95rem; font-weight:600; cursor:pointer; text-align:center; text-decoration:none; transition:opacity .15s; margin-top:1rem; }
+    .btn-checkout:hover { opacity:.85; }
+
+    .empty-cart { text-align:center; padding:4rem 1rem; color:var(--muted); }
+    .empty-cart p { font-size:1rem; margin:.5rem 0 1.5rem; }
+    .btn-back { display:inline-block; padding:.6rem 1.2rem; border-radius:8px; border:1.5px solid var(--border); color:var(--text); text-decoration:none; font-size:.88rem; font-weight:500; transition:border-color .15s; }
+    .btn-back:hover { border-color:var(--dark); }
+
+    @media (max-width:700px) { .page { grid-template-columns:1fr; } .summary { position:static; } }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/src/pages/home.html" class="nav-logo">Smart<span>Mirror</span></a>
+  <a href="/src/pages/home.html" class="nav-back">← Continuer mes achats</a>
+</nav>
+
+<div class="page" id="page">
+  <div>
+    <h1>Mon panier</h1>
+    <div class="cart-items" id="cart-items"></div>
+  </div>
+  <div class="summary" id="summary">
+    <h2>Récapitulatif</h2>
+    <div id="summary-lines"></div>
+    <div class="livraison-note">🚚 Livraison gratuite partout en Tunisie</div>
+    <a href="/src/pages/checkout.html" class="btn-checkout" id="btn-checkout">Passer la commande</a>
+  </div>
+</div>
+
+<script>
+  function getCart() { try { return JSON.parse(localStorage.getItem('sm_cart') || '[]'); } catch { return []; } }
+  function saveCart(c) { try { localStorage.setItem('sm_cart', JSON.stringify(c)); } catch {} }
+
+  function render() {
+    const cart = getCart();
+    const itemsEl = document.getElementById('cart-items');
+    const summaryEl = document.getElementById('summary-lines');
+
+    if (!cart.length) {
+      document.getElementById('page').innerHTML = `
+        <div class="empty-cart" style="grid-column:1/-1">
+          <div style="font-size:2.5rem">🛍</div>
+          <p>Votre panier est vide.</p>
+          <a href="/src/pages/home.html" class="btn-back">Voir le catalogue</a>
+        </div>`;
+      return;
+    }
+
+    itemsEl.innerHTML = cart.map((item, i) => `
+      <div class="item" data-index="${i}">
+        <div class="item-img"><img src="${item.texture}" alt="${item.name}" /></div>
+        <div class="item-info">
+          <div class="item-name">${item.name}</div>
+          <div class="item-meta">Taille ${item.size}</div>
+          <div class="item-controls">
+            <button class="qty-btn" data-action="dec" data-index="${i}">−</button>
+            <span class="qty-val">${item.qty}</span>
+            <button class="qty-btn" data-action="inc" data-index="${i}">+</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.5rem">
+          <div class="item-price">${item.price * item.qty} DT</div>
+          <button class="item-remove" data-index="${i}">Retirer</button>
+        </div>
+      </div>`).join('');
+
+    const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+    summaryEl.innerHTML = cart.map(i => `
+      <div class="summary-line"><span>${i.name} ×${i.qty}</span><span>${i.price * i.qty} DT</span></div>`).join('')
+      + `<div class="summary-line total"><span>Total</span><span class="val">${subtotal} DT</span></div>`;
+
+    itemsEl.addEventListener('click', e => {
+      const btn = e.target.closest('[data-action],[data-index].item-remove');
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.index);
+      const c = getCart();
+      if (btn.classList.contains('item-remove')) {
+        c.splice(idx, 1);
+      } else if (btn.dataset.action === 'inc') {
+        c[idx].qty++;
+      } else if (btn.dataset.action === 'dec') {
+        if (c[idx].qty > 1) c[idx].qty--; else c.splice(idx, 1);
+      }
+      saveCart(c);
+      render();
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>
