@@ -103,3 +103,20 @@ test('skeleton : facultatif ; invalide → avertissement, vêtement gardé avec 
   assert.match(warnings[0], /skeleton/);
   assert.match(warnings[2], /category/);
 });
+
+test('source : facultatif (crédits VITON-HD) ; mal formé → avertissement, vêtement gardé sans source', () => {
+  const source = { dataset: 'VITON-HD', id: '00013_00', license: 'CC BY-NC 4.0 (research, citation required)' };
+  const { catalog, warnings } = validateCatalog({
+    garments: [
+      good({ id: 'ok', source }),
+      good({ id: 'sans-id', source: { dataset: 'VITON-HD' } }),
+      good({ id: 'texte', source: 'VITON-HD' }),
+    ],
+  });
+  assert.deepEqual(catalog.garments.map((g) => g.id), ['ok', 'sans-id', 'texte']);
+  assert.deepEqual(catalog.garments[0].source, source);
+  assert.equal(catalog.garments[1].source, undefined);
+  assert.equal(catalog.garments[2].source, undefined);
+  assert.equal(warnings.length, 2);
+  assert.ok(warnings.every((w) => /source/.test(w)));
+});
