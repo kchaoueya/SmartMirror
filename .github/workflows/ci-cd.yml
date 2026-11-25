@@ -1,0 +1,57 @@
+# Pipeline CI/CD de SmartMirror AR.
+#  - CI : à chaque push et pull request → installation, tests (npm test), build Vite.
+#  - CD : seulement sur main, si la CI passe → déploiement de dist/ sur Netlify (HTTPS, servi à la racine du
+#    domaine : les chemins absolus /assets, /src/pages, /sw.mjs restent valides, contrairement à GitHub Pages
+#    qui sert le site sous /SmartMirror/).
+# Secrets à créer dans GitHub (Settings → Secrets and variables → Actions) : NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID.
+name: CI/CD
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Tests et build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  deploy:
+    name: Déploiement Netlify
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - id: deploy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          npx --yes netlify-cli@17 deploy --prod --dir=dist --no-build --json > deploy.json
+          echo "url=$(node -p "require('./deploy.json').url")" >> "$GITHUB_OUTPUT"

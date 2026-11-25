@@ -1,0 +1,10 @@
+# En-têtes HTTP Netlify (copié dans dist/ par Vite, lu au déploiement de .github/workflows/ci-cd.yml).
+/sw.mjs
+  Cache-Control: no-cache
+  Content-Type: text/javascript
+/*.mjs
+  Content-Type: text/javascript
+/*.wasm
+  Content-Type: application/wasm
+/*
+  Permissions-Policy: camera=(self)

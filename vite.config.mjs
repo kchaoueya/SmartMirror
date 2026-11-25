@@ -39,6 +39,7 @@ export default defineConfig(async ({ mode }) => {
           cart:     resolve('src/pages/cart.html'),
           checkout: resolve('src/pages/checkout.html'),
           merci:    resolve('src/pages/merci.html'),
+          info:     resolve('src/pages/info.html'),
         },
       },
     },
