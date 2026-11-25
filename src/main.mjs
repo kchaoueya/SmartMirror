@@ -128,18 +128,12 @@ async function boot() {
       const hashId = location.hash.slice(1);
       const preselect = hashId ? ctx.catalog.garments.find(g => g.id === hashId) : null;
       selectGarment(preselect ?? ctx.catalog.garments[0]);
-      // Catalogue de test : passe par le même point d'entrée que la boutique.
       buildCatalog(ctx.catalog.garments, (g) => startTryOn(g.id));
     }
   } else errors.push(catalog.reason.message);
 
   if (errors.length) console.warn('Modules non prêts :\n- ' + errors.join('\n- '));
   setState(AppState.READY, errors.length ? { message: `Prêt (${errors.length} module(s) à implémenter, voir console)` } : {});
-
-  // Auto-démarrage si l'utilisateur arrive depuis le catalogue (hash = id du vêtement), par startTryOn :
-  // « Placez-vous » et compte à rebours. Pas de await : startTryOn attend la fin de boot().
-  const hashId = location.hash.slice(1);
-  if (hashId) startTryOn(hashId).catch((e) => console.warn(e.message));
 }
 
 let running = false; // caméra et boucle actives

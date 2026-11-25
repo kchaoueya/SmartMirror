@@ -9,7 +9,7 @@
     "dev:https": "vite --mode https",
     "preview": "vite preview",
     "preview:https": "vite preview --mode https",
-    "test": "node --test \"tests/**/*.test.mjs\""
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.2.0",

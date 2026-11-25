@@ -1,0 +1,32 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Évite les erreurs 404 sur les pages du multi-page app
+[[redirects]]
+  from = "/home"
+  to   = "/src/pages/home.html"
+  status = 200
+
+[[redirects]]
+  from = "/cart"
+  to   = "/src/pages/cart.html"
+  status = 200
+
+[[redirects]]
+  from = "/checkout"
+  to   = "/src/pages/checkout.html"
+  status = 200
+
+[[redirects]]
+  from = "/merci"
+  to   = "/src/pages/merci.html"
+  status = 200
+
+[[redirects]]
+  from = "/info"
+  to   = "/src/pages/info.html"
+  status = 200
