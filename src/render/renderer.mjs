@@ -32,6 +32,9 @@ export async function createRenderer(canvas) {
   // ce qui évite le conflit « webgpu feature » de Chrome (non standardisé).
   renderer.xr.enabled = false;
 
+  // Session XR active (null si non démarrée ou fermée).
+  let activeSession = null;
+
   const scene = new THREE.Scene();
 
   // Caméra orthographique en pixels : y_scène = -y_écran (0 en haut, -h en bas)
@@ -68,9 +71,14 @@ export async function createRenderer(canvas) {
   /**
    * Ouvre une session WebXR inline (WebXR Device API — session dans la page, sans plein écran).
    * Compatible PC/mobile nativement, aucun polyfill requis.
+   *
+   * @param {(roll:number, pitch:number) => void} [onOrientation]
+   *   Callback appelé à chaque XRFrame avec l'inclinaison du device en radians :
+   *   roll  = tilt gauche/droite (axe Z), pitch = tilt avant/arrière (axe X).
+   *   Utilisé par main.js pour compenser le mouvement du téléphone entre deux inférences MediaPipe.
    * @returns {Promise<boolean>}  true = session ouverte, false = non supporté (repli sans XR)
    */
-  async function startXRSession() {
+  async function startXRSession(onOrientation) {
     if (!navigator.xr) return false;
     const supported = await navigator.xr.isSessionSupported('inline').catch(() => false);
     if (!supported) return false;
@@ -78,11 +86,29 @@ export async function createRenderer(canvas) {
       // Session inline native — WebXR Device API, sans passer par Three.js XR
       // (Chrome ne supporte pas encore 'webgpu' comme feature XR).
       const session = await navigator.xr.requestSession('inline');
-      // Boucle XR : reçoit le XRFrame à chaque rendu.
+      activeSession = session;
+
+      // 'viewer' : espace de référence ancré sur la position initiale du device.
+      // Tout tilt ultérieur se mesure par rapport à ce point de départ.
+      const referenceSpace = await session.requestReferenceSpace('viewer');
+
       const xrLoop = (time, frame) => {
         session.requestAnimationFrame(xrLoop);
+        if (!frame || !onOrientation) return;
+
+        const pose = frame.getViewerPose(referenceSpace);
+        if (!pose) return;
+
+        // Orientation du device sous forme de quaternion {x, y, z, w}.
+        const { x, y, z, w } = pose.transform.orientation;
+        // Conversion quaternion → angles d'Euler (pitch/roll) pour détecter l'inclinaison.
+        const roll  = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+        const pitch = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
+        onOrientation(roll, pitch);
       };
       session.requestAnimationFrame(xrLoop);
+
+      console.info('[XR] Session inline ouverte — compensation de tilt active');
       return true;
     } catch (e) {
       console.warn('[XR] Session inline échouée :', e.message);
@@ -90,9 +116,13 @@ export async function createRenderer(canvas) {
     }
   }
 
-  /** Ferme la session WebXR active. */
+  /** Ferme proprement la session WebXR active et libère les ressources. */
   async function endXRSession() {
-    // session gérée manuellement — rien à faire côté Three.js
+    if (activeSession) {
+      await activeSession.end().catch(() => {});
+      activeSession = null;
+      console.info('[XR] Session fermée');
+    }
   }
 
   return { renderer, scene, camera, backend, resize, render, startXRSession, endXRSession };

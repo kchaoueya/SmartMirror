@@ -77,6 +77,10 @@ let seen = null;    // derniers repères vus, même peu fiables (affichés par l
 let trackLevel = 'none'; // niveau de la détection d'où repart le flux optique ('full' ou 'shoulders')
 let mode = 'none';       // niveau des derniers repères valides, affiché en diagnostic
 let lostSince = 0;
+// Compensation de tilt WebXR (mobile) : inclinaison du device en radians, mise à jour par la boucle XR.
+// Séparé de store.adjust (réglages manuels utilisateur) pour ne pas les mélanger.
+const xrTilt = { roll: 0, pitch: 0 };
+const XR_TILT_SCALE = 0.15; // fraction de largeur d'épaules par radian (~naturel jusqu'à 30°)
 
 /** Repart de zéro : plus de repères, ni de suivi, ni d'historique de filtre. */
 function resetTracking() {
@@ -172,8 +176,13 @@ async function start() {
 
   // Ouvre une session WebXR inline (native, sans polyfill).
   // startXRSession retourne false si non supporté → l'appli tourne sans XR (repli propre).
+  // Le callback reçoit roll/pitch à chaque XRFrame et met à jour xrTilt pour compenser
+  // l'inclinaison du téléphone entre deux inférences MediaPipe.
   if (ctx.gfx) {
-    const xrStarted = await ctx.gfx.startXRSession();
+    const xrStarted = await ctx.gfx.startXRSession((roll, pitch) => {
+      xrTilt.roll = roll;
+      xrTilt.pitch = pitch;
+    });
     if (!xrStarted) console.warn('[XR] Session non démarrée — rendu sans WebXR');
   }
 
@@ -189,6 +198,8 @@ function stop() {
   resetTracking();
   placement.reset();
   showPlacement(null);
+  xrTilt.roll = xrTilt.pitch = 0;
+  ctx.gfx?.endXRSession();
   setState(AppState.STOPPED);
 }
 
@@ -260,7 +271,13 @@ function loop(now) {
   let corners = null;
   if (valid && ctx.cv) {
     const fit = store.fit ?? { ks: 1.35, kh: 1.25, dc: 0.12, db: 0.1 };
-    corners = destinationCorners(store.landmarks, fit, store.adjust);
+    // Offset XR (tilt mobile) ajouté aux réglages manuels utilisateur sans les écraser.
+    const adjustWithXR = {
+      scale: store.adjust.scale,
+      dx: store.adjust.dx + xrTilt.roll  * XR_TILT_SCALE,
+      dy: store.adjust.dy + xrTilt.pitch * XR_TILT_SCALE,
+    };
+    corners = destinationCorners(store.landmarks, fit, adjustWithXR);
     const [texW, texH] = shown?.size ?? [1024, 1024];
     transform = computeTransform(ctx.cv, corners, texW, texH, shown?.anchors);
   }
