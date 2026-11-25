@@ -21,15 +21,15 @@ jobs:
     name: Tests et build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: dist
           path: dist
@@ -44,7 +44,10 @@ jobs:
       name: production
       url: ${{ steps.deploy.outputs.url }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v5
         with:
           name: dist
           path: dist
@@ -53,5 +56,8 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
-          npx --yes netlify-cli@17 deploy --prod --dir=dist --no-build --json > deploy.json
-          echo "url=$(node -p "require('./deploy.json').url")" >> "$GITHUB_OUTPUT"
+          # Message clair si un secret manque (cause la plus fréquente d'échec).
+          [ -n "$NETLIFY_AUTH_TOKEN" ] || { echo "::error::Secret NETLIFY_AUTH_TOKEN absent (Settings → Secrets and variables → Actions)"; exit 1; }
+          [ -n "$NETLIFY_SITE_ID" ] || { echo "::error::Secret NETLIFY_SITE_ID absent (Settings → Secrets and variables → Actions)"; exit 1; }
+          npx --yes netlify-cli@latest deploy --prod --dir=dist --no-build --site "$NETLIFY_SITE_ID" --json > deploy.json || { cat deploy.json; exit 1; }
+          echo "url=$(node -p "require('./deploy.json').deploy_url || require('./deploy.json').url")" >> "$GITHUB_OUTPUT"
