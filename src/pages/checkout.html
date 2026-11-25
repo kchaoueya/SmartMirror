@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>SmartMirror — Commande</title>
+  <meta name="theme-color" content="#2C2420" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" />
+  <style>
+    :root {
+      --bg:#FDFCFB; --surface:#FFFFFF; --text:#1C1917; --muted:#9C948C;
+      --dark:#2C2420; --accent:#B8874A; --border:#EAE6E1;
+      --err:#C0392B; --neu-bg:#EEF7F0; --neu-fg:#2D6B34; --radius:10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --bg:#1A1714; --surface:#242019; --text:#EDE8E2; --muted:#8A8278; --dark:#EDE8E2; --accent:#C99A5A; --border:#33302C; color-scheme:dark; }
+    }
+    :root[data-theme="dark"] { --bg:#1A1714; --surface:#242019; --text:#EDE8E2; --muted:#8A8278; --dark:#EDE8E2; --accent:#C99A5A; --border:#33302C; color-scheme:dark; }
+    *, *::before, *::after { box-sizing:border-box; }
+    body { margin:0; font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+
+    nav { position:sticky; top:0; z-index:100; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:1rem; padding-block:.85rem; padding-left:max(1.25rem,env(safe-area-inset-left,0px)); padding-right:max(1.25rem,env(safe-area-inset-right,0px)); }
+    .nav-logo { font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.2rem; color:var(--text); text-decoration:none; }
+    .nav-logo span { color:var(--accent); }
+    .nav-back { margin-left:auto; font-size:.82rem; color:var(--muted); text-decoration:none; }
+    .nav-back:hover { color:var(--text); }
+
+    /* STEPS */
+    .steps { display:flex; align-items:center; justify-content:center; gap:0; padding:1.25rem 1rem; border-bottom:1px solid var(--border); background:var(--surface); }
+    .step { display:flex; align-items:center; gap:.4rem; font-size:.8rem; color:var(--muted); }
+    .step.active { color:var(--text); font-weight:600; }
+    .step.done { color:var(--neu-fg); }
+    .step-num { width:22px; height:22px; border-radius:50%; border:1.5px solid currentColor; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; flex-shrink:0; }
+    .step.done .step-num { background:var(--neu-fg); border-color:var(--neu-fg); color:#fff; }
+    .step.active .step-num { background:var(--dark); border-color:var(--dark); color:#fff; }
+    .step-sep { width:2.5rem; height:1px; background:var(--border); margin:0 .4rem; }
+
+    .page { max-width:1000px; margin:0 auto; padding:2rem max(1.25rem,env(safe-area-inset-left,0px)); display:grid; grid-template-columns:1fr 300px; gap:2rem; align-items:start; }
+    h1 { font-family:'Playfair Display',Georgia,serif; font-size:1.5rem; font-weight:700; margin:0 0 1.5rem; }
+
+    /* FORM */
+    form { display:flex; flex-direction:column; gap:1.25rem; }
+    .form-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; }
+    .form-section h2 { font-size:.95rem; font-weight:600; margin:0 0 1rem; display:flex; align-items:center; gap:.5rem; }
+    .fields { display:grid; grid-template-columns:1fr 1fr; gap:.85rem; }
+    .field-full { grid-column:1/-1; }
+    label { display:flex; flex-direction:column; gap:.3rem; font-size:.82rem; font-weight:500; color:var(--text); }
+    input, select, textarea {
+      padding:.6rem .8rem; border-radius:7px; border:1.5px solid var(--border);
+      background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-size:.88rem;
+      transition:border-color .15s; outline:none;
+    }
+    input:focus, select:focus, textarea:focus { border-color:var(--dark); }
+    input.err, select.err { border-color:var(--err); }
+    .err-msg { font-size:.74rem; color:var(--err); display:none; }
+    .err-msg.show { display:block; }
+    textarea { resize:vertical; min-height:70px; }
+
+    /* PAYMENT */
+    .pay-option { display:flex; align-items:center; gap:.8rem; padding:.85rem 1rem; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; transition:border-color .15s; }
+    .pay-option:hover, .pay-option.selected { border-color:var(--dark); }
+    .pay-option.selected { background:color-mix(in srgb, var(--dark) 5%, transparent); }
+    .pay-radio { width:16px; height:16px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .pay-option.selected .pay-radio { border-color:var(--dark); }
+    .pay-radio::after { content:''; width:7px; height:7px; border-radius:50%; background:var(--dark); display:none; }
+    .pay-option.selected .pay-radio::after { display:block; }
+    .pay-label { font-weight:500; font-size:.88rem; }
+    .pay-sub { font-size:.75rem; color:var(--muted); }
+
+    /* SUMMARY */
+    .summary { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; position:sticky; top:5rem; }
+    .summary h2 { font-size:.95rem; font-weight:600; margin:0 0 1rem; }
+    .s-item { display:flex; align-items:center; gap:.6rem; margin-bottom:.7rem; }
+    .s-img { width:48px; height:48px; border-radius:6px; overflow:hidden; background:#EDEBE7; flex-shrink:0; }
+    .s-img img { width:100%; height:100%; object-fit:cover; }
+    .s-name { font-size:.82rem; font-weight:500; flex:1; min-width:0; }
+    .s-price { font-size:.85rem; font-weight:600; white-space:nowrap; }
+    .s-sep { border:none; border-top:1px solid var(--border); margin:.8rem 0; }
+    .s-line { display:flex; justify-content:space-between; font-size:.85rem; color:var(--muted); margin-bottom:.4rem; }
+    .s-total { display:flex; justify-content:space-between; font-weight:600; font-size:.95rem; color:var(--text); padding-top:.6rem; border-top:1px solid var(--border); }
+    .s-total span:last-child { font-family:'Playfair Display',Georgia,serif; font-size:1.1rem; }
+    .livraison-note { font-size:.74rem; color:var(--neu-fg); background:var(--neu-bg); padding:.4rem .7rem; border-radius:6px; margin:.8rem 0 0; }
+
+    .btn-submit { display:block; width:100%; padding:.85rem; border-radius:9px; background:var(--dark); color:#fff; border:none; font-family:'DM Sans',sans-serif; font-size:.95rem; font-weight:600; cursor:pointer; text-align:center; transition:opacity .15s; margin-top:1.5rem; }
+    .btn-submit:hover { opacity:.85; }
+
+    @media (max-width:700px) { .page { grid-template-columns:1fr; } .summary { position:static; } .fields { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/src/pages/home.html" class="nav-logo">Smart<span>Mirror</span></a>
+  <a href="/src/pages/cart.html" class="nav-back">← Panier</a>
+</nav>
+
+<div class="steps">
+  <div class="step done"><div class="step-num">✓</div> Panier</div>
+  <div class="step-sep"></div>
+  <div class="step active"><div class="step-num">2</div> Livraison</div>
+  <div class="step-sep"></div>
+  <div class="step"><div class="step-num">3</div> Confirmation</div>
+</div>
+
+<div class="page">
+  <div>
+    <h1>Informations de livraison</h1>
+    <form id="checkout-form" novalidate>
+      <div class="form-section">
+        <h2>👤 Coordonnées</h2>
+        <div class="fields">
+          <label>Prénom <input type="text" id="f-prenom" placeholder="Yasmine" autocomplete="given-name" /> <span class="err-msg" id="e-prenom">Champ requis</span></label>
+          <label>Nom <input type="text" id="f-nom" placeholder="Ben Ali" autocomplete="family-name" /> <span class="err-msg" id="e-nom">Champ requis</span></label>
+          <label class="field-full">Téléphone <input type="tel" id="f-tel" placeholder="+216 XX XXX XXX" autocomplete="tel" /> <span class="err-msg" id="e-tel">Numéro invalide</span></label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>📍 Adresse de livraison</h2>
+        <div class="fields">
+          <label class="field-full">Adresse <input type="text" id="f-adresse" placeholder="Rue, numéro, immeuble…" autocomplete="street-address" /> <span class="err-msg" id="e-adresse">Champ requis</span></label>
+          <label>Ville <input type="text" id="f-ville" placeholder="Ariana" autocomplete="address-level2" /> <span class="err-msg" id="e-ville">Champ requis</span></label>
+          <label>Gouvernorat
+            <select id="f-wilaya" autocomplete="address-level1">
+              <option value="">— Choisir —</option>
+              <option>Tunis</option><option>Ariana</option><option>Ben Arous</option><option>Manouba</option>
+              <option>Nabeul</option><option>Zaghouan</option><option>Bizerte</option><option>Béja</option>
+              <option>Jendouba</option><option>Le Kef</option><option>Siliana</option><option>Sousse</option>
+              <option>Monastir</option><option>Mahdia</option><option>Sfax</option><option>Kairouan</option>
+              <option>Kasserine</option><option>Sidi Bouzid</option><option>Gabès</option><option>Médenine</option>
+              <option>Tataouine</option><option>Gafsa</option><option>Tozeur</option><option>Kébili</option>
+            </select>
+            <span class="err-msg" id="e-wilaya">Champ requis</span>
+          </label>
+          <label class="field-full">Remarque (optionnel) <textarea id="f-note" placeholder="Instructions pour le livreur…"></textarea></label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>💳 Mode de paiement</h2>
+        <div style="display:flex;flex-direction:column;gap:.6rem">
+          <div class="pay-option selected" data-method="cod">
+            <div class="pay-radio"></div>
+            <div><div class="pay-label">Paiement à la livraison</div><div class="pay-sub">Payez en espèces à la réception de votre colis</div></div>
+          </div>
+          <div class="pay-option" data-method="virement">
+            <div class="pay-radio"></div>
+            <div><div class="pay-label">Virement bancaire</div><div class="pay-sub">Coordonnées envoyées par SMS après validation</div></div>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">Confirmer la commande</button>
+    </form>
+  </div>
+
+  <div class="summary">
+    <h2>Votre commande</h2>
+    <div id="s-items"></div>
+    <hr class="s-sep">
+    <div id="s-lines"></div>
+    <div class="livraison-note">🚚 Livraison gratuite partout en Tunisie</div>
+  </div>
+</div>
+
+<script>
+  function getCart() { try { return JSON.parse(localStorage.getItem('sm_cart') || '[]'); } catch { return []; } }
+
+  /* Summary */
+  const cart = getCart();
+  if (!cart.length) { window.location.href = '/src/pages/cart.html'; }
+
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  document.getElementById('s-items').innerHTML = cart.map(i => `
+    <div class="s-item">
+      <div class="s-img"><img src="${i.texture}" alt="${i.name}" /></div>
+      <div class="s-name">${i.name}<br><small style="color:var(--muted)">Taille ${i.size} · ×${i.qty}</small></div>
+      <div class="s-price">${i.price * i.qty} DT</div>
+    </div>`).join('');
+  document.getElementById('s-lines').innerHTML = `
+    <div class="s-line"><span>Sous-total</span><span>${subtotal} DT</span></div>
+    <div class="s-line"><span>Livraison</span><span style="color:var(--neu-fg)">Gratuite</span></div>
+    <div class="s-total"><span>Total</span><span>${subtotal} DT</span></div>`;
+
+  /* Payment options */
+  let selectedMethod = 'cod';
+  document.querySelectorAll('.pay-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.pay-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedMethod = opt.dataset.method;
+    });
+  });
+
+  /* Validation + submit */
+  function req(id, errId, check) {
+    const el = document.getElementById(id);
+    const ok = check(el.value.trim());
+    el.classList.toggle('err', !ok);
+    document.getElementById(errId).classList.toggle('show', !ok);
+    return ok;
+  }
+
+  document.getElementById('checkout-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const ok = [
+      req('f-prenom',  'e-prenom',  v => v.length > 0),
+      req('f-nom',     'e-nom',     v => v.length > 0),
+      req('f-tel',     'e-tel',     v => /^[+\d\s]{8,}$/.test(v)),
+      req('f-adresse', 'e-adresse', v => v.length > 0),
+      req('f-ville',   'e-ville',   v => v.length > 0),
+      req('f-wilaya',  'e-wilaya',  v => v.length > 0),
+    ].every(Boolean);
+    if (!ok) return;
+
+    const order = {
+      id: 'SM-' + Date.now().toString(36).toUpperCase(),
+      date: new Date().toLocaleDateString('fr-TN'),
+      items: cart,
+      total: subtotal,
+      payment: selectedMethod,
+      shipping: {
+        prenom: document.getElementById('f-prenom').value.trim(),
+        nom:    document.getElementById('f-nom').value.trim(),
+        tel:    document.getElementById('f-tel').value.trim(),
+        adresse:document.getElementById('f-adresse').value.trim(),
+        ville:  document.getElementById('f-ville').value.trim(),
+        wilaya: document.getElementById('f-wilaya').value,
+        note:   document.getElementById('f-note').value.trim(),
+      }
+    };
+    try { localStorage.setItem('sm_last_order', JSON.stringify(order)); localStorage.removeItem('sm_cart'); } catch {}
+    window.location.href = '/src/pages/merci.html';
+  });
+</script>
+</body>
+</html>

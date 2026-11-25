@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>SmartMirror — Infos</title>
+  <meta name="theme-color" content="#2C2420" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=DM+Sans:wght@400;500;600&display=swap" />
+  <style>
+    :root {
+      --bg:#FDFCFB; --surface:#FFFFFF; --text:#1C1917; --muted:#9C948C;
+      --dark:#2C2420; --accent:#B8874A; --border:#EAE6E1;
+      --neu-bg:#EEF7F0; --neu-fg:#2D6B34; --radius:10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --bg:#1A1714; --surface:#242019; --text:#EDE8E2; --muted:#8A8278; --dark:#EDE8E2; --accent:#C99A5A; --border:#33302C; color-scheme:dark; }
+    }
+    :root[data-theme="dark"] { --bg:#1A1714; --surface:#242019; --text:#EDE8E2; --muted:#8A8278; --dark:#EDE8E2; --accent:#C99A5A; --border:#33302C; color-scheme:dark; }
+    *, *::before, *::after { box-sizing:border-box; }
+    body { margin:0; font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+
+    /* NAV */
+    nav { position:sticky; top:0; z-index:100; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:1rem; padding-block:.85rem; padding-left:max(1.25rem,env(safe-area-inset-left,0px)); padding-right:max(1.25rem,env(safe-area-inset-right,0px)); }
+    .nav-logo { font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.2rem; color:var(--text); text-decoration:none; }
+    .nav-logo span { color:var(--accent); }
+    .nav-back { margin-left:auto; font-size:.82rem; color:var(--muted); text-decoration:none; }
+    .nav-back:hover { color:var(--text); }
+
+    /* LAYOUT */
+    .layout { display:grid; grid-template-columns:220px 1fr; min-height:calc(100vh - 56px); max-width:1100px; margin:0 auto; }
+
+    /* SIDEBAR */
+    .sidebar { border-right:1px solid var(--border); padding:2rem 0; position:sticky; top:56px; height:calc(100vh - 56px); overflow-y:auto; }
+    .sidebar-label { font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; font-weight:600; color:var(--muted); padding:.5rem 1.5rem .3rem; }
+    .sidebar a {
+      display:flex; align-items:center; gap:.6rem;
+      padding:.6rem 1.5rem; font-size:.88rem; color:var(--muted);
+      text-decoration:none; border-left:2px solid transparent;
+      transition:color .12s, border-color .12s, background .12s;
+    }
+    .sidebar a:hover { color:var(--text); background:color-mix(in srgb,var(--dark) 4%,transparent); }
+    .sidebar a.active { color:var(--text); font-weight:600; border-left-color:var(--accent); background:color-mix(in srgb,var(--accent) 6%,transparent); }
+
+    /* CONTENT */
+    .content { padding:2.5rem max(2rem,env(safe-area-inset-right,0px)) 4rem 2.5rem; max-width:720px; }
+
+    .section { display:none; }
+    .section.active { display:block; }
+
+    .section-eyebrow { font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; font-weight:600; color:var(--accent); margin-bottom:.6rem; }
+    h1 { font-family:'Playfair Display',Georgia,serif; font-size:clamp(1.5rem,3vw,2rem); font-weight:800; line-height:1.15; margin:0 0 1rem; }
+    .lead { font-size:1rem; color:var(--muted); line-height:1.7; margin-bottom:2rem; }
+
+    /* HOW IT WORKS - steps */
+    .steps-list { display:flex; flex-direction:column; gap:1.5rem; margin:2rem 0; }
+    .step-item { display:flex; gap:1.25rem; align-items:flex-start; }
+    .step-num {
+      width:40px; height:40px; border-radius:50%; background:var(--dark); color:#fff;
+      font-family:'Playfair Display',Georgia,serif; font-size:1.1rem; font-weight:700;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .step-body { flex:1; padding-top:.4rem; }
+    .step-title { font-weight:600; font-size:.95rem; margin-bottom:.3rem; }
+    .step-desc { font-size:.86rem; color:var(--muted); line-height:1.6; }
+
+    .info-box { background:var(--neu-bg); border-left:3px solid var(--neu-fg); border-radius:0 var(--radius) var(--radius) 0; padding:.9rem 1.1rem; margin:1.5rem 0; font-size:.86rem; color:var(--text); line-height:1.6; }
+
+    /* ABOUT */
+    .team-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:1rem; margin:1.5rem 0; }
+    .team-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1rem; text-align:center; }
+    .team-avatar { width:52px; height:52px; border-radius:50%; background:var(--dark); color:#fff; font-family:'Playfair Display',Georgia,serif; font-size:1.2rem; font-weight:700; display:flex; align-items:center; justify-content:center; margin:0 auto .75rem; }
+    .team-name { font-weight:600; font-size:.88rem; }
+    .team-role { font-size:.76rem; color:var(--muted); margin-top:.2rem; }
+
+    .values-list { display:flex; flex-direction:column; gap:.85rem; margin:1.5rem 0; }
+    .value-item { display:flex; gap:.85rem; align-items:flex-start; }
+    .value-icon { font-size:1.3rem; flex-shrink:0; margin-top:.1rem; }
+    .value-text strong { display:block; font-size:.92rem; font-weight:600; margin-bottom:.15rem; }
+    .value-text span { font-size:.84rem; color:var(--muted); line-height:1.5; }
+
+    /* SELL */
+    .sell-steps { counter-reset:sell; display:flex; flex-direction:column; gap:1rem; margin:1.5rem 0; }
+    .sell-step { display:flex; gap:1rem; align-items:flex-start; }
+    .sell-step::before { counter-increment:sell; content:counter(sell); width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:.82rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:.1rem; }
+    .sell-step div { font-size:.88rem; line-height:1.6; padding-top:.1rem; }
+    .sell-step div strong { display:block; font-weight:600; font-size:.92rem; margin-bottom:.1rem; }
+
+    .sell-cta { background:var(--dark); color:#fff; border-radius:var(--radius); padding:1.5rem; margin:2rem 0; text-align:center; }
+    .sell-cta p { margin:.4rem 0 1rem; color:rgba(255,255,255,.65); font-size:.88rem; }
+    .btn-cta { display:inline-block; padding:.65rem 1.5rem; border-radius:8px; background:var(--accent); color:#fff; border:none; font-family:'DM Sans',sans-serif; font-size:.88rem; font-weight:600; cursor:pointer; text-decoration:none; }
+
+    /* FAQ */
+    .faq-list { display:flex; flex-direction:column; gap:0; margin:1.5rem 0; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .faq-item { border-bottom:1px solid var(--border); }
+    .faq-item:last-child { border-bottom:none; }
+    .faq-q { width:100%; text-align:left; background:none; border:none; padding:.95rem 1.1rem; font-family:'DM Sans',sans-serif; font-size:.9rem; font-weight:600; color:var(--text); cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:1rem; transition:background .12s; }
+    .faq-q:hover { background:color-mix(in srgb,var(--dark) 4%,transparent); }
+    .faq-icon { font-size:1rem; color:var(--muted); flex-shrink:0; transition:transform .2s; }
+    .faq-item.open .faq-icon { transform:rotate(45deg); }
+    .faq-a { font-size:.87rem; color:var(--muted); line-height:1.7; padding:0 1.1rem; max-height:0; overflow:hidden; transition:max-height .25s ease, padding .25s; }
+    .faq-item.open .faq-a { max-height:300px; padding:.1rem 1.1rem .95rem; }
+
+    /* CONDITIONS */
+    .conditions h2 { font-size:1rem; font-weight:700; margin:1.8rem 0 .5rem; }
+    .conditions p, .conditions li { font-size:.87rem; color:var(--muted); line-height:1.75; }
+    .conditions ul { padding-left:1.4rem; margin:.4rem 0; }
+
+    @media (max-width:680px) {
+      .layout { grid-template-columns:1fr; }
+      .sidebar { position:static; height:auto; border-right:none; border-bottom:1px solid var(--border); padding:1rem 0; display:flex; overflow-x:auto; gap:0; }
+      .sidebar-label { display:none; }
+      .sidebar a { white-space:nowrap; border-left:none; border-bottom:2px solid transparent; padding:.5rem 1rem; }
+      .sidebar a.active { border-left:none; border-bottom-color:var(--accent); }
+      .content { padding:1.5rem 1rem 3rem; }
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/src/pages/home.html" class="nav-logo">Smart<span>Mirror</span></a>
+  <a href="/src/pages/home.html" class="nav-back">← Retour</a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Pages</div>
+    <a href="#comment-ca-marche" data-section="comment-ca-marche">📷 Comment ça marche ?</a>
+    <a href="#a-propos" data-section="a-propos">✦ À propos</a>
+    <a href="#vendre" data-section="vendre">🏷 Vendre un article</a>
+    <a href="#faq" data-section="faq">💬 FAQ</a>
+    <a href="#conditions" data-section="conditions">📄 Conditions</a>
+  </aside>
+
+  <main class="content">
+
+    <!-- COMMENT ÇA MARCHE -->
+    <div class="section" id="section-comment-ca-marche">
+      <div class="section-eyebrow">Guide</div>
+      <h1>Comment ça marche ?</h1>
+      <p class="lead">SmartMirror combine le shopping seconde main avec la réalité augmentée. En quelques secondes, tu peux voir n'importe quelle pièce du catalogue sur toi — avant d'acheter.</p>
+
+      <div class="steps-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Parcours le catalogue</div>
+            <div class="step-desc">Explore les articles disponibles, filtre par catégorie, consulte les photos, le prix et l'état de chaque pièce.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Clique sur un article pour l'ouvrir</div>
+            <div class="step-desc">La fiche produit s'ouvre avec tous les détails : vendeur, description, tailles disponibles.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Essaie en AR</div>
+            <div class="step-desc">Clique sur <strong>"Essayer en AR"</strong> — ta caméra s'ouvre. Place-toi à environ 1,5–2 m, épaules et hanches visibles. Le vêtement apparaît sur toi en temps réel.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Ajuste si besoin</div>
+            <div class="step-desc">Utilise les réglages (taille, décalage) pour affiner le placement du vêtement sur ta silhouette.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Ajoute au panier et commande</div>
+            <div class="step-desc">Tu craques ? Ajoute au panier, remplis tes informations de livraison et confirme. Paiement à la réception.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">💡 L'essayage AR fonctionne sur <strong>Chrome</strong> et <strong>Edge</strong> (version récente, desktop ou Android). Il nécessite une caméra et WebGPU activé.</div>
+    </div>
+
+    <!-- À PROPOS -->
+    <div class="section" id="section-a-propos">
+      <div class="section-eyebrow">Notre histoire</div>
+      <h1>À propos de SmartMirror</h1>
+      <p class="lead">SmartMirror est né d'une idée simple : pourquoi acheter un vêtement en ligne sans pouvoir le voir sur soi ? On a construit la réponse.</p>
+
+      <div class="values-list">
+        <div class="value-item"><div class="value-icon">♻️</div><div class="value-text"><strong>Seconde main, première qualité</strong><span>On croit que les belles pièces méritent une deuxième vie. Chaque article est vérifié avant d'être publié.</span></div></div>
+        <div class="value-item"><div class="value-icon">📷</div><div class="value-text"><strong>L'AR au service de la confiance</strong><span>Essayer avant d'acheter réduit les retours, les déceptions et le gaspillage. C'est bon pour toi et pour la planète.</span></div></div>
+        <div class="value-item"><div class="value-icon">🇹🇳</div><div class="value-text"><strong>Made in Tunisia</strong><span>Un projet 100 % tunisien, construit avec des technologies ouvertes (WebXR, WebGPU, MediaPipe).</span></div></div>
+      </div>
+
+      <h2 style="font-size:1rem;font-weight:700;margin:2rem 0 1rem">L'équipe</h2>
+      <div class="team-grid">
+        <div class="team-card"><div class="team-avatar">S</div><div class="team-name">Salma</div><div class="team-role">Vision & AR</div></div>
+        <div class="team-card"><div class="team-avatar">T</div><div class="team-name">Tasnim</div><div class="team-role">Rendu 3D</div></div>
+        <div class="team-card"><div class="team-avatar">E</div><div class="team-name">Eya</div><div class="team-role">App & UI</div></div>
+      </div>
+    </div>
+
+    <!-- VENDRE -->
+    <div class="section" id="section-vendre">
+      <div class="section-eyebrow">Vendeurs</div>
+      <h1>Vendre un article</h1>
+      <p class="lead">Tu as des vêtements qui prennent la poussière ? Publie-les sur SmartMirror et touche des acheteurs qui peuvent les essayer en AR avant de craquer.</p>
+
+      <div class="sell-steps">
+        <div class="sell-step"><div><strong>Prends de belles photos</strong>Sur fond neutre, bonne lumière, 3–5 photos suffisent (face, dos, détails).</div></div>
+        <div class="sell-step"><div><strong>Remplis la fiche article</strong>Nom, description honnête, état, taille, prix. Sois précis — ça rassure les acheteurs.</div></div>
+        <div class="sell-step"><div><strong>On prépare l'essayage AR</strong>Notre équipe crée la texture AR de ton article sous 48 h. L'acheteur peut l'essayer avant d'acheter.</div></div>
+        <div class="sell-step"><div><strong>Une vente, on s'occupe du reste</strong>On gère la livraison et le paiement. Tu reçois ton virement une fois la commande confirmée.</div></div>
+      </div>
+
+      <div class="sell-cta">
+        <strong style="font-family:'Playfair Display',Georgia,serif;font-size:1.1rem">Prêt à vendre ?</strong>
+        <p>Envoie-nous ta liste d'articles par e-mail et on revient vers toi sous 24 h.</p>
+        <a href="#" class="btn-cta">contact@smartmirror.tn</a>
+      </div>
+
+      <div class="info-box">💰 Commission : 10 % sur chaque vente. Livraison prise en charge. Paiement sous 5 jours ouvrables après livraison confirmée.</div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="section" id="section-faq">
+      <div class="section-eyebrow">Questions fréquentes</div>
+      <h1>FAQ</h1>
+      <p class="lead">Tout ce que tu veux savoir avant de commander ou de vendre.</p>
+
+      <div class="faq-list" id="faq-list"></div>
+    </div>
+
+    <!-- CONDITIONS -->
+    <div class="section conditions" id="section-conditions">
+      <div class="section-eyebrow">Légal</div>
+      <h1>Conditions d'utilisation</h1>
+      <p class="lead">En utilisant SmartMirror, vous acceptez les conditions suivantes. Dernière mise à jour : novembre 2025.</p>
+
+      <h2>1. Objet</h2>
+      <p>SmartMirror est une plateforme de vente de vêtements et accessoires de seconde main entre particuliers, intégrant une fonctionnalité d'essayage en réalité augmentée.</p>
+
+      <h2>2. Comptes et responsabilité vendeur</h2>
+      <p>Les vendeurs s'engagent à décrire honnêtement leurs articles (état, taille, matière) et à expédier dans les délais convenus. SmartMirror se réserve le droit de retirer tout article non conforme à la description.</p>
+
+      <h2>3. Achats et paiement</h2>
+      <ul>
+        <li>Le paiement s'effectue à la livraison ou par virement bancaire.</li>
+        <li>Toute commande confirmée engage l'acheteur.</li>
+        <li>En cas de non-conformité, l'acheteur dispose de 48 h après réception pour le signaler.</li>
+      </ul>
+
+      <h2>4. Livraison</h2>
+      <p>La livraison est assurée partout en Tunisie sous 3–7 jours ouvrables. Les frais de livraison sont offerts pour toute commande.</p>
+
+      <h2>5. Données personnelles</h2>
+      <p>Les informations collectées (nom, adresse, téléphone) sont utilisées uniquement pour le traitement des commandes et ne sont pas transmises à des tiers.</p>
+
+      <h2>6. Essayage AR</h2>
+      <p>La fonctionnalité d'essayage AR est fournie à titre indicatif. Les rendus peuvent différer légèrement de la réalité selon votre environnement et votre appareil.</p>
+
+      <h2>7. Contact</h2>
+      <p>Pour toute question : <strong>contact@smartmirror.tn</strong></p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const FAQ = [
+    { q: "Sur quel navigateur fonctionne l'essayage AR ?", a: "L'essayage AR nécessite Chrome ou Edge en version récente sur desktop ou Android. Il n'est pas disponible sur Safari ni sur iOS pour le moment, en raison des limitations WebGPU sur ces plateformes." },
+    { q: "Je ne vois pas le vêtement s'afficher — que faire ?", a: "Assure-toi de te placer à 1,5–2 m de la caméra, de face, avec les épaules ET les hanches visibles. Un bon éclairage aide MediaPipe à te détecter. Si le problème persiste, vérifie que WebGPU est activé dans chrome://flags." },
+    { q: "Les articles sont-ils vérifiés avant publication ?", a: "Oui. Chaque article est examiné par notre équipe avant d'être mis en ligne. On vérifie l'état déclaré, les photos et la cohérence de la description." },
+    { q: "Puis-je retourner un article ?", a: "En cas de non-conformité avérée (état réel très différent de la description), tu disposes de 48 h après réception pour nous contacter. On étudie chaque cas individuellement." },
+    { q: "Combien de temps prend la livraison ?", a: "Entre 3 et 7 jours ouvrables partout en Tunisie. Un SMS de suivi te sera envoyé dès la prise en charge du colis." },
+    { q: "Comment payer ?", a: "Uniquement à la livraison (espèces) ou par virement bancaire. Les coordonnées bancaires sont communiquées par SMS après confirmation de commande." },
+    { q: "Je veux vendre — comment ça se passe ?", a: "Envoie-nous ta liste d'articles avec photos à contact@smartmirror.tn. On prépare la fiche et la texture AR sous 48 h, puis on met l'article en ligne. Commission de 10 % à la vente, livraison gérée par SmartMirror." },
+  ];
+
+  document.getElementById('faq-list').innerHTML = FAQ.map((f, i) => `
+    <div class="faq-item" id="faq-${i}">
+      <button class="faq-q" aria-expanded="false" aria-controls="faq-a-${i}">
+        ${f.q}<span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a" id="faq-a-${i}">${f.a}</div>
+    </div>`).join('');
+
+  document.getElementById('faq-list').addEventListener('click', e => {
+    const btn = e.target.closest('.faq-q');
+    if (!btn) return;
+    const item = btn.closest('.faq-item');
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+  });
+
+  /* Hash routing */
+  const SECTIONS = ['comment-ca-marche', 'a-propos', 'vendre', 'faq', 'conditions'];
+
+  function showSection(id) {
+    const target = SECTIONS.includes(id) ? id : 'comment-ca-marche';
+    SECTIONS.forEach(s => {
+      document.getElementById('section-' + s)?.classList.toggle('active', s === target);
+    });
+    document.querySelectorAll('.sidebar a').forEach(a => {
+      a.classList.toggle('active', a.dataset.section === target);
+    });
+    document.title = 'SmartMirror — ' + (document.querySelector('.sidebar a.active')?.textContent.trim().replace(/^.\s*/, '') || 'Infos');
+  }
+
+  window.addEventListener('hashchange', () => showSection(location.hash.slice(1)));
+  showSection(location.hash.slice(1));
+</script>
+</body>
+</html>
