@@ -34,6 +34,12 @@
     *   **Licence :** À compléter (usage académique uniquement tant que la licence n'est pas vérifiée)
     *   **Modifications apportées :** Conversion PNG RGBA (réduction à 1024 px, ou agrandissement bicubique ×3 pour les vignettes 200×300) ; fond blanc détouré, contour rogné et recoloré, ancres épaules / ourlet mesurées avec `tools/prepare-garment.mjs --fond=blanc` (ancres du pull jaune placées à la main).
 
+*   **Assets :** `public/assets/garments/vitonhd/*.png` (+ `vitonhd/thumbs/`) — photos produit de hauts et masques de détourage
+    *   **Source originale :** jeu de données **VITON-HD** (partie test, dossiers `cloth/` et `cloth-mask/`). Dépôt officiel : https://github.com/shadow2496/VITON-HD ; copie téléchargée : https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST. Identifiant d'origine de chaque image : champ `source.id` de `catalog.json`.
+    *   **Auteurs :** Seunghwan Choi, Sunghyun Park, Minsoo Lee, Jaegul Choo (KAIST) — *VITON-HD: High-Resolution Virtual Try-On via Misalignment-Aware Normalization*, CVPR 2021.
+    *   **Licence :** Creative Commons BY-NC 4.0 (licence du dépôt officiel) : usage non commercial, citation de l'article et mention des modifications obligatoires.
+    *   **Modifications apportées :** détourage par le masque fourni (seuil 127), plus grand morceau conservé et trous bouchés, recadrage sur le vêtement, conversion en PNG RGBA, contour rogné de 1 px et recoloré par inpainting (OpenCV), vignette 256 px, ancres épaules / ourlet et centres de manche mesurés par `tools/prepare_garments.py`.
+
 > Les textures sont chargées et appliquées sur un maillage WebGPU via `src/render/textures.js` (loadGarmentTexture) et `src/render/garment-mesh.js` (setTexture).
 
 ---

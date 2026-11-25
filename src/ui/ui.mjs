@@ -32,6 +32,25 @@ export function renderState(state, detail = {}) {
   $('btn-start').disabled = !canStart;
 }
 
+let lastPlacement = '';
+
+/**
+ * Consigne « Placez-vous » ou compte à rebours (Salma, placement.js) par-dessus la vidéo.
+ * Appelée à chaque image : le DOM n'est modifié que si le texte change.
+ * @param {{message: string|null, countdown: number|null}|null} view  null : rien à afficher
+ */
+export function showPlacement(view) {
+  const text = view?.countdown ? String(view.countdown) : view?.message ?? '';
+  const key = `${view?.countdown ? 'c' : 'm'}:${text}`;
+  if (key === lastPlacement) return;
+  lastPlacement = key;
+  const el = $('placement');
+  el.textContent = text;
+  el.hidden = !text;
+  el.classList.toggle('countdown', Boolean(view?.countdown));
+  $('hint').hidden = Boolean(text); // une seule consigne à la fois (« Cadrez vos épaules… » fait doublon)
+}
+
 /**
  * Construit les boutons du catalogue et branche la sélection.
  * @param {object[]} garments  liste du catalogue
@@ -200,6 +219,14 @@ export function validateCatalog(json) {
     if (g.skeleton !== undefined && !isSkeleton(g.skeleton)) {
       warnings.push(`${where} : skeleton invalide (8 articulations [u, v] dans [0, 1]), squelette par défaut utilisé`);
       delete garment.skeleton;
+    }
+    // source (facultatif, crédits d'un jeu de données : tools/prepare_garments.py --source) : informatif,
+    // n'influe pas sur l'affichage. Mal formé : avertissement, le vêtement reste utilisable.
+    const src = g.source;
+    if (src !== undefined && !(src && typeof src === 'object' && typeof src.dataset === 'string' && src.dataset
+      && typeof src.id === 'string' && src.id)) {
+      warnings.push(`${where} : source invalide ({ dataset, id, license }), ignorée`);
+      delete garment.source;
     }
     garments.push(garment);
   });

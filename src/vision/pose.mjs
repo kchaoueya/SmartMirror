@@ -40,6 +40,7 @@ export const MIN_VISIBILITY = 0.5;
  * @property {RawPoint} [rightElbow]  absents des mesures du flux optique (tracker.js)
  * @property {RawPoint} [leftWrist]
  * @property {RawPoint} [rightWrist]
+ * @property {RawPoint} [nose]  visage visible pour démarrer l'essayage (placement.js) ; absent du flux optique
  * @property {number} timestamp  ms
  */
 
@@ -140,6 +141,7 @@ export function detectTorso(detector, video, timestampMs) {
     rightElbow: pick(LM.RIGHT_ELBOW),
     leftWrist: pick(LM.LEFT_WRIST),
     rightWrist: pick(LM.RIGHT_WRIST),
+    nose: pick(LM.NOSE),
     timestamp: ts,
   };
   return detector.last;
