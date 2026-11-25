@@ -127,9 +127,6 @@ async function boot() {
 
   if (errors.length) console.warn('Modules non prêts :\n- ' + errors.join('\n- '));
   setState(AppState.READY, errors.length ? { message: `Prêt (${errors.length} module(s) à implémenter, voir console)` } : {});
-
-  // Auto-démarrage si l'utilisateur arrive depuis le catalogue (hash = id du vêtement)
-  if (location.hash.slice(1)) start();
 }
 
 async function start() {
