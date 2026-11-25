@@ -115,5 +115,10 @@ export function torsoToDisplay(raw, frame) {
       out.confidence[k] = p.visibility;
     }
   }
+  // Nez : aucun côté, donc pas de règle miroir à appliquer.
+  if (raw.nose) {
+    out.nose = toDisplay(raw.nose, frame);
+    out.confidence.nose = raw.nose.visibility;
+  }
   return out;
 }
